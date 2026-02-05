@@ -162,6 +162,11 @@ return {
       local cached_models = {}
       local current_provider_name = ""
 
+      -- Helper to sync local cache to global
+      local function sync_cache()
+        _G._99_cached_models = cached_models
+      end
+
       -- Fetch models from CLI (async)
       local function fetch_models(provider_name, callback)
         local cmd = nil
@@ -177,6 +182,7 @@ return {
             "gemini-2.0-flash",
           }
           current_provider_name = provider_name
+          sync_cache()
           if callback then callback() end
           return
         elseif provider_name == "ClaudeCodeProvider" then
@@ -189,6 +195,7 @@ return {
             "claude-sonnet-4",
           }
           current_provider_name = provider_name
+          sync_cache()
           if callback then callback() end
           return
         elseif provider_name == "CodexProvider" then
@@ -200,12 +207,14 @@ return {
             "o4-mini",
           }
           current_provider_name = provider_name
+          sync_cache()
           if callback then callback() end
           return
         else
           -- Fallback for other providers
           cached_models = {}
           current_provider_name = provider_name
+          sync_cache()
           if callback then callback() end
           return
         end
@@ -221,6 +230,7 @@ return {
                 end
               end
               current_provider_name = provider_name
+              sync_cache()
               if callback then callback() end
             end
           end)
@@ -304,6 +314,17 @@ return {
         end)
       end, { desc = "Switch to Codex provider" })
 
+      -- Completion function (must be global for nvim_create_user_command)
+      _G._99_complete_models = function(arg_lead, cmd_line, cursor_pos)
+        local matches = {}
+        for _, model in ipairs(_G._99_cached_models or {}) do
+          if arg_lead == "" or model:lower():find(arg_lead:lower(), 1, true) then
+            table.insert(matches, model)
+          end
+        end
+        return matches
+      end
+
       -- Set custom model with dynamic completion from cached models
       vim.api.nvim_create_user_command("NNModel", function(opts)
         if opts.args and opts.args ~= "" then
@@ -327,15 +348,7 @@ return {
       end, {
         nargs = "?",
         desc = "Set or show current model",
-        complete = function(arg_lead)
-          local matches = {}
-          for _, model in ipairs(cached_models) do
-            if model:lower():find(arg_lead:lower(), 1, true) then
-              table.insert(matches, model)
-            end
-          end
-          return matches
-        end,
+        complete = _G._99_complete_models,
       })
 
       -- Show current provider and available providers
