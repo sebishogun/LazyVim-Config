@@ -153,6 +153,8 @@ setup_ai_providers() {
     HAS_OPENCODE=false
     HAS_CLAUDE=false
     HAS_COPILOT=false
+    HAS_GEMINI=false
+    HAS_CODEX=false
     
     if command -v opencode &> /dev/null; then
         HAS_OPENCODE=true
@@ -175,45 +177,49 @@ setup_ai_providers() {
         echo -e "${RED}✗ GitHub Copilot CLI not found${NC}"
     fi
     
+    if command -v gemini &> /dev/null; then
+        HAS_GEMINI=true
+        echo -e "${GREEN}✓ Gemini CLI found${NC}"
+    else
+        echo -e "${RED}✗ Gemini CLI not found${NC}"
+    fi
+    
+    if command -v codex &> /dev/null; then
+        HAS_CODEX=true
+        echo -e "${GREEN}✓ Codex CLI found${NC}"
+    else
+        echo -e "${RED}✗ Codex CLI not found${NC}"
+    fi
+    
     echo ""
     
-    # If all installed, configure and use defaults
-    if $HAS_OPENCODE && $HAS_CLAUDE && $HAS_COPILOT; then
-        echo -e "${GREEN}All AI CLI providers installed!${NC}"
+    # If OpenCode is installed, configure it
+    if $HAS_OPENCODE; then
         configure_opencode_agent
-        echo -e "${GREEN}Default provider: OpenCode (switch with :NNClaude or :NNCopilot)${NC}"
-        return
+        echo -e "${GREEN}Configured OpenCode as default provider${NC}"
     fi
     
-    # If at least one installed, configure what's available
-    if $HAS_OPENCODE || $HAS_CLAUDE || $HAS_COPILOT; then
-        if $HAS_OPENCODE; then
-            configure_opencode_agent
-            echo -e "${GREEN}Configured OpenCode as default provider${NC}"
-        elif $HAS_CLAUDE; then
-            echo -e "${GREEN}Claude Code available - use :NNClaude in neovim${NC}"
-        elif $HAS_COPILOT; then
-            echo -e "${GREEN}Copilot CLI available - use :NNCopilot in neovim${NC}"
-        fi
-    fi
+    # Show available provider switch commands
+    echo -e "${YELLOW}Available provider commands in neovim:${NC}"
+    $HAS_OPENCODE && echo "  :NNOpenCode  - Anthropic Claude via OpenCode"
+    $HAS_OPENCODE && echo "  :NNOpenAI    - OpenAI models via OpenCode"
+    $HAS_CLAUDE && echo "  :NNClaude    - Claude Code CLI"
+    $HAS_COPILOT && echo "  :NNCopilot   - GitHub Copilot CLI"
+    $HAS_GEMINI && echo "  :NNGemini    - Google Gemini CLI"
+    $HAS_CODEX && echo "  :NNCodex     - OpenAI Codex CLI"
+    echo "  :NNModel     - Change model (with Tab completion)"
+    echo "  :NNStatus    - Show current provider status"
     
-    # Offer to install missing providers
-    if ! $HAS_OPENCODE || ! $HAS_CLAUDE || ! $HAS_COPILOT; then
+    # Warn if no providers installed
+    if ! $HAS_OPENCODE && ! $HAS_CLAUDE && ! $HAS_COPILOT && ! $HAS_GEMINI && ! $HAS_CODEX; then
         echo ""
-        echo -e "${YELLOW}Would you like to install missing AI CLI providers?${NC}"
-        read -p "Install missing providers? [y/N] " -n 1 -r; echo
-        
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            install_ai_providers "$HAS_OPENCODE" "$HAS_CLAUDE" "$HAS_COPILOT"
-        else
-            if ! $HAS_OPENCODE && ! $HAS_CLAUDE && ! $HAS_COPILOT; then
-                echo -e "${YELLOW}Warning: No AI CLI providers installed. 99 plugin won't work without one.${NC}"
-                echo -e "${YELLOW}You can install them later manually:${NC}"
-                echo "  OpenCode:  curl -fsSL https://opencode.ai/install | bash"
-                echo "  Claude:    npm install -g @anthropic-ai/claude-code"
-                echo "  Copilot:   gh extension install github/gh-copilot"
-            fi
-        fi
+        echo -e "${YELLOW}Warning: No AI CLI providers installed. 99 plugin won't work without one.${NC}"
+        echo -e "${YELLOW}Install options:${NC}"
+        echo "  OpenCode:  curl -fsSL https://opencode.ai/install | bash"
+        echo "  Claude:    npm install -g @anthropic-ai/claude-code"
+        echo "  Copilot:   gh extension install github/gh-copilot"
+        echo "  Gemini:    npm install -g @google/gemini-cli"
+        echo "  Codex:     npm install -g @openai/codex"
     fi
 }
 
@@ -410,7 +416,7 @@ main() {
     echo "  <leader>re  = Explain error"
     echo "  <leader>rc  = Open Cargo.toml"
     echo ""
-    echo "99 AI Agent (requires OpenCode/Claude/Copilot CLI):"
+    echo "99 AI Agent (supports OpenCode/Claude/Copilot/Gemini/Codex CLI):"
     echo "  <leader>9f  = Fill in function"
     echo "  <leader>9v  = Process visual selection"
     echo "  :NNOpenCode = Switch to OpenCode provider"
