@@ -9,6 +9,12 @@ return {
     -- Alternatively, use the remote fork:
     -- "sebishogun/99",
     config = function()
+      -- Ensure queries directory is in runtime path for treesitter
+      local plugin_path = vim.fn.expand("~/neovim-configs/99")
+      if not vim.tbl_contains(vim.opt.runtimepath:get(), plugin_path) then
+        vim.opt.runtimepath:append(plugin_path)
+      end
+
       local _99 = require("99")
 
       -- Get the cwd basename for log file naming
