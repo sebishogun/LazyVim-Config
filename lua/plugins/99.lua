@@ -351,6 +351,7 @@ return {
         print("99 AI Agent Status:")
         print("  Provider: " .. provider_name)
         print("  Model: " .. state.model)
+        print("  Cached models: " .. #cached_models)
         print("")
         print("Available CLIs:")
         print("  OpenCode: " .. (vim.fn.executable("opencode") == 1 and "✓" or "✗"))
@@ -359,6 +360,17 @@ return {
         print("  Gemini:   " .. (vim.fn.executable("gemini") == 1 and "✓" or "✗"))
         print("  Codex:    " .. (vim.fn.executable("codex") == 1 and "✓" or "✗"))
       end, { desc = "Show 99 plugin status" })
+
+      -- Pre-populate model cache for the default provider on startup
+      local provider_name_map = {
+        OpenCodeProvider = "OpenCodeProvider",
+        ClaudeCodeProvider = "ClaudeCodeProvider",
+        CopilotCLIProvider = "CopilotCLIProvider",
+        GeminiProvider = "GeminiProvider",
+        CodexProvider = "CodexProvider",
+      }
+      local default_provider_name = default_provider._get_provider_name and default_provider:_get_provider_name() or "OpenCodeProvider"
+      fetch_models(default_provider_name)
     end,
   },
 }
