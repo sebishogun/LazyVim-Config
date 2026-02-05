@@ -2,9 +2,16 @@ return {
   {
     "neovim/nvim-lspconfig",
     opts = {
+      -- Prevent lspconfig from setting up rust_analyzer (rustaceanvim handles it)
+      setup = {
+        rust_analyzer = function()
+          return true -- returning true prevents lspconfig from setting up this server
+        end,
+      },
       servers = {
         gopls = { settings = { gopls = { staticcheck = true, gofumpt = true, usePlaceholders = true, analyses = { unusedparams = true, shadow = true, fieldalignment = true, nilness = true, unusedwrite = true, useany = true }, hints = { assignVariableTypes = true, compositeLiteralFields = true, constantValues = true, functionTypeParameters = true, parameterNames = true, rangeVariableTypes = true } } } },
-        -- rust_analyzer handled by rustaceanvim (see rust.lua)
+        -- Explicitly disable rust_analyzer - rustaceanvim handles it (see rust.lua)
+        rust_analyzer = false,
         zls = {},
         clangd = {},
         pyright = {},
