@@ -155,6 +155,79 @@ return {
       end, { desc = "99: Clear previous requests" })
 
       -- ╭──────────────────────────────────────────────────────────╮
+      -- │                 Model Fetching                           │
+      -- ╰──────────────────────────────────────────────────────────╯
+
+      -- Cached models for current provider
+      local cached_models = {}
+      local current_provider_name = ""
+
+      -- Fetch models from CLI (async)
+      local function fetch_models(provider_name, callback)
+        local cmd = nil
+        if provider_name == "OpenCodeProvider" then
+          cmd = { "opencode", "models" }
+        elseif provider_name == "GeminiProvider" then
+          -- Gemini CLI doesn't have model list, use known models
+          cached_models = {
+            "gemini-3-pro-preview",
+            "gemini-3-flash",
+            "gemini-2.5-pro",
+            "gemini-2.5-flash",
+            "gemini-2.0-flash",
+          }
+          current_provider_name = provider_name
+          if callback then callback() end
+          return
+        elseif provider_name == "ClaudeCodeProvider" then
+          -- Claude CLI doesn't have model list, use known models
+          cached_models = {
+            "opus",
+            "sonnet",
+            "claude-opus-4-5",
+            "claude-sonnet-4-5",
+            "claude-sonnet-4",
+          }
+          current_provider_name = provider_name
+          if callback then callback() end
+          return
+        elseif provider_name == "CodexProvider" then
+          -- Codex CLI doesn't have model list, use known models
+          cached_models = {
+            "gpt-codex-5.2-xhigh",
+            "gpt-5.1-codex-max",
+            "o3",
+            "o4-mini",
+          }
+          current_provider_name = provider_name
+          if callback then callback() end
+          return
+        else
+          -- Fallback for other providers
+          cached_models = {}
+          current_provider_name = provider_name
+          if callback then callback() end
+          return
+        end
+
+        -- Run async for OpenCode
+        vim.system(cmd, { text = true }, function(obj)
+          vim.schedule(function()
+            if obj.code == 0 and obj.stdout then
+              cached_models = {}
+              for line in obj.stdout:gmatch("[^\r\n]+") do
+                if line ~= "" then
+                  table.insert(cached_models, line)
+                end
+              end
+              current_provider_name = provider_name
+              if callback then callback() end
+            end
+          end)
+        end)
+      end
+
+      -- ╭──────────────────────────────────────────────────────────╮
       -- │                 Provider Switching                       │
       -- ╰──────────────────────────────────────────────────────────╯
 
@@ -163,27 +236,35 @@ return {
         local state = _99.__get_state()
         state.provider_override = _99.Providers.OpenCodeProvider
         state.model = "anthropic/claude-opus-4-5"
-        print("99: Switched to OpenCode (claude-opus-4-5)")
+        fetch_models("OpenCodeProvider", function()
+          print("99: Switched to OpenCode (claude-opus-4-5) - " .. #cached_models .. " models available")
+        end)
       end, { desc = "Switch to OpenCode provider" })
 
       vim.api.nvim_create_user_command("NNOpenAI", function()
         local state = _99.__get_state()
         state.provider_override = _99.Providers.OpenCodeProvider
         state.model = "gpt-codex-5.2-xhigh"
-        print("99: Switched to OpenCode (gpt-codex-5.2-xhigh)")
+        fetch_models("OpenCodeProvider", function()
+          print("99: Switched to OpenCode (gpt-codex-5.2-xhigh) - " .. #cached_models .. " models available")
+        end)
       end, { desc = "Switch to OpenCode with OpenAI model" })
 
       vim.api.nvim_create_user_command("NNClaude", function()
         local state = _99.__get_state()
         state.provider_override = _99.Providers.ClaudeCodeProvider
         state.model = "opus"
-        print("99: Switched to Claude Code (opus)")
+        fetch_models("ClaudeCodeProvider", function()
+          print("99: Switched to Claude Code (opus) - " .. #cached_models .. " models available")
+        end)
       end, { desc = "Switch to Claude Code provider" })
 
       vim.api.nvim_create_user_command("NNCopilot", function()
         local state = _99.__get_state()
         state.provider_override = _99.Providers.CopilotCLIProvider
-        state.model = "claude-sonnet-4.5" -- Default Copilot CLI model
+        state.model = "claude-sonnet-4.5"
+        cached_models = { "claude-sonnet-4.5", "gpt-4o" }
+        current_provider_name = "CopilotCLIProvider"
         print("99: Switched to Copilot CLI")
       end, { desc = "Switch to Copilot CLI provider" })
 
@@ -191,6 +272,8 @@ return {
         local state = _99.__get_state()
         state.provider_override = _99.Providers.CursorAgentProvider
         state.model = "sonnet-4.5"
+        cached_models = { "sonnet-4.5", "opus-4.5", "gpt-4o" }
+        current_provider_name = "CursorAgentProvider"
         print("99: Switched to Cursor Agent")
       end, { desc = "Switch to Cursor Agent provider" })
 
@@ -198,6 +281,8 @@ return {
         local state = _99.__get_state()
         state.provider_override = _99.Providers.KiroProvider
         state.model = "claude-sonnet-4.5"
+        cached_models = { "claude-sonnet-4.5" }
+        current_provider_name = "KiroProvider"
         print("99: Switched to Kiro")
       end, { desc = "Switch to Kiro provider" })
 
@@ -205,17 +290,21 @@ return {
         local state = _99.__get_state()
         state.provider_override = _99.Providers.GeminiProvider
         state.model = "gemini-3-pro-preview"
-        print("99: Switched to Gemini (gemini-3-pro-preview)")
+        fetch_models("GeminiProvider", function()
+          print("99: Switched to Gemini (gemini-3-pro-preview) - " .. #cached_models .. " models available")
+        end)
       end, { desc = "Switch to Gemini provider" })
 
       vim.api.nvim_create_user_command("NNCodex", function()
         local state = _99.__get_state()
         state.provider_override = _99.Providers.CodexProvider
         state.model = "gpt-codex-5.2-xhigh"
-        print("99: Switched to Codex (gpt-codex-5.2-xhigh)")
+        fetch_models("CodexProvider", function()
+          print("99: Switched to Codex (gpt-codex-5.2-xhigh) - " .. #cached_models .. " models available")
+        end)
       end, { desc = "Switch to Codex provider" })
 
-      -- Set custom model
+      -- Set custom model with dynamic completion from cached models
       vim.api.nvim_create_user_command("NNModel", function(opts)
         if opts.args and opts.args ~= "" then
           _99.set_model(opts.args)
@@ -223,8 +312,31 @@ return {
         else
           local state = _99.__get_state()
           print("99: Current model: " .. state.model)
+          if #cached_models > 0 then
+            print("99: Available models (" .. current_provider_name .. "):")
+            for i, model in ipairs(cached_models) do
+              if i <= 10 then
+                print("  " .. model)
+              elseif i == 11 then
+                print("  ... and " .. (#cached_models - 10) .. " more (use Tab for completion)")
+                break
+              end
+            end
+          end
         end
-      end, { nargs = "?", desc = "Set or show current model" })
+      end, {
+        nargs = "?",
+        desc = "Set or show current model",
+        complete = function(arg_lead)
+          local matches = {}
+          for _, model in ipairs(cached_models) do
+            if model:lower():find(arg_lead:lower(), 1, true) then
+              table.insert(matches, model)
+            end
+          end
+          return matches
+        end,
+      })
 
       -- Show current provider and available providers
       vim.api.nvim_create_user_command("NNStatus", function()
