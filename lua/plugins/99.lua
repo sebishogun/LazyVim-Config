@@ -31,7 +31,7 @@ return {
 
         -- Use OpenCode as the default provider with Claude Opus 4.5
         provider = _99.Providers.OpenCodeProvider,
-        model = "anthropic/claude-opus-4-5-20250514",
+        model = "anthropic/claude-opus-4-5",
 
         -- Completion settings for cmp autocomplete
         -- NOTE: Set source = "cmp" if you have nvim-cmp installed and want @ completion
@@ -123,7 +123,7 @@ return {
       vim.api.nvim_create_user_command("NNOpenCode", function()
         local state = _99.__get_state()
         state.provider_override = _99.Providers.OpenCodeProvider
-        state.model = "anthropic/claude-opus-4-5-20250514"
+        state.model = "anthropic/claude-opus-4-5"
         print("99: Switched to OpenCode (claude-opus-4-5)")
       end, { desc = "Switch to OpenCode provider" })
 
