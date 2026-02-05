@@ -31,7 +31,7 @@ return {
 
         -- Use Claude CLI as the default provider (OpenCode auto-rejects file permissions in run mode)
         provider = _99.Providers.ClaudeCodeProvider,
-        model = "claude-opus-4-5-20250514",
+        model = "opus",  -- Use alias: opus, sonnet, haiku
 
         -- Completion settings for cmp autocomplete
         -- NOTE: Set source = "cmp" if you have nvim-cmp installed and want @ completion
@@ -130,8 +130,8 @@ return {
       vim.api.nvim_create_user_command("NNClaude", function()
         local state = _99.__get_state()
         state.provider_override = _99.Providers.ClaudeCodeProvider
-        state.model = "claude-opus-4-5-20250514"
-        print("99: Switched to Claude Code (claude-opus-4-5)")
+        state.model = "opus"
+        print("99: Switched to Claude Code (opus)")
       end, { desc = "Switch to Claude Code provider" })
 
       vim.api.nvim_create_user_command("NNCopilot", function()
