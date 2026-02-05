@@ -163,8 +163,15 @@ return {
         local state = _99.__get_state()
         state.provider_override = _99.Providers.OpenCodeProvider
         state.model = "anthropic/claude-opus-4-5"
-        print("99: Switched to OpenCode (using neovim agent)")
+        print("99: Switched to OpenCode (claude-opus-4-5)")
       end, { desc = "Switch to OpenCode provider" })
+
+      vim.api.nvim_create_user_command("NNOpenAI", function()
+        local state = _99.__get_state()
+        state.provider_override = _99.Providers.OpenCodeProvider
+        state.model = "gpt-codex-5.2-xhigh"
+        print("99: Switched to OpenCode (gpt-codex-5.2-xhigh)")
+      end, { desc = "Switch to OpenCode with OpenAI model" })
 
       vim.api.nvim_create_user_command("NNClaude", function()
         local state = _99.__get_state()
@@ -204,8 +211,8 @@ return {
       vim.api.nvim_create_user_command("NNCodex", function()
         local state = _99.__get_state()
         state.provider_override = _99.Providers.CodexProvider
-        state.model = "gpt-5.1-codex-max"
-        print("99: Switched to Codex (gpt-5.1-codex-max)")
+        state.model = "gpt-codex-5.2-xhigh"
+        print("99: Switched to Codex (gpt-codex-5.2-xhigh)")
       end, { desc = "Switch to Codex provider" })
 
       -- Set custom model
