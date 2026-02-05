@@ -314,15 +314,16 @@ return {
         end)
       end, { desc = "Switch to Codex provider" })
 
-      -- Completion function (must be global for nvim_create_user_command)
-      _G._99_complete_models = function(arg_lead, cmd_line, cursor_pos)
+      -- Completion function for v:lua access
+      function _G.NNModelComplete(arg_lead, cmd_line, cursor_pos)
+        local models = _G._99_cached_models or {}
         local matches = {}
-        for _, model in ipairs(_G._99_cached_models or {}) do
+        for _, model in ipairs(models) do
           if arg_lead == "" or model:lower():find(arg_lead:lower(), 1, true) then
             table.insert(matches, model)
           end
         end
-        return matches
+        return table.concat(matches, "\n")
       end
 
       -- Set custom model with dynamic completion from cached models
@@ -348,7 +349,7 @@ return {
       end, {
         nargs = "?",
         desc = "Set or show current model",
-        complete = _G._99_complete_models,
+        complete = "customlist,v:lua.NNModelComplete",
       })
 
       -- Show current provider and available providers
