@@ -204,8 +204,8 @@ return {
       vim.api.nvim_create_user_command("NNGemini", function()
         local state = _99.__get_state()
         state.provider_override = _99.Providers.GeminiProvider
-        state.model = "gemini-2.5-pro"
-        print("99: Switched to Gemini (gemini-2.5-pro)")
+        state.model = "gemini-3-pro-preview"
+        print("99: Switched to Gemini (gemini-3-pro-preview)")
       end, { desc = "Switch to Gemini provider" })
 
       vim.api.nvim_create_user_command("NNCodex", function()
