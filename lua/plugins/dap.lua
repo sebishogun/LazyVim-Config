@@ -6,10 +6,10 @@ return {
     dependencies = {
       { "rcarriga/nvim-dap-ui", dependencies = { "nvim-neotest/nvim-nio" } },
       "theHamsta/nvim-dap-virtual-text",
-      { "jay-babu/mason-nvim-dap.nvim", dependencies = { "williamboman/mason.nvim" } },
+      { "jay-babu/mason-nvim-dap.nvim", dependencies = { "mason-org/mason.nvim" } },
       "leoluz/nvim-dap-go",
       "mxsdev/nvim-dap-vscode-js",
-      { "microsoft/vscode-js-debug", build = "npm install --legacy-peer-deps && npx gulp vsDebugServerBundle && mv dist out" },
+      { "microsoft/vscode-js-debug", build = "npm install --legacy-peer-deps && npx gulp dapDebugServer && mv dist out" },
     },
     config = function()
       local dap = require("dap")

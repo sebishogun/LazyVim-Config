@@ -24,7 +24,7 @@ return {
     },
   },
   {
-    "williamboman/mason.nvim",
+    "mason-org/mason.nvim",
     opts = {
       ensure_installed = { "gopls", "rust-analyzer", "zls", "clangd", "pyright", "lua-language-server", "typescript-language-server", "eslint-lsp", "html-lsp", "css-lsp", "tailwindcss-language-server", "json-lsp", "yaml-language-server", "bash-language-server", "dockerfile-language-server", "marksman", "sqlls", "stylua", "shfmt", "black", "prettier" },
     },
