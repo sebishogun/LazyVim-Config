@@ -67,6 +67,29 @@ install_config() {
     rm -f "$HOME/.config/nvim/install.sh" "$HOME/.config/nvim/uninstall.sh" "$HOME/.config/nvim/README.md" "$HOME/.config/nvim/.git" 2>/dev/null || true
 }
 
+# Install 99 AI agent plugin (fork with CopilotCLI support)
+install_99_plugin() {
+    echo -e "${YELLOW}Installing 99 AI agent plugin...${NC}"
+    PLUGIN_DIR="$HOME/neovim-configs/99"
+    
+    if [[ -d "$PLUGIN_DIR" ]]; then
+        echo -e "${GREEN}99 plugin already exists, pulling latest...${NC}"
+        cd "$PLUGIN_DIR" && git pull origin master
+    else
+        echo -e "${YELLOW}Cloning 99 plugin fork...${NC}"
+        mkdir -p "$HOME/neovim-configs"
+        git clone https://github.com/sebishogun/99.git "$PLUGIN_DIR"
+    fi
+    
+    # Check if opencode is installed (default provider)
+    if command -v opencode &> /dev/null; then
+        echo -e "${GREEN}OpenCode CLI found - 99 plugin ready!${NC}"
+    else
+        echo -e "${YELLOW}Note: Install OpenCode CLI for 99 plugin: https://github.com/opencode-ai/opencode${NC}"
+        echo -e "${YELLOW}Or switch to another provider with :NNClaude, :NNCopilot, etc.${NC}"
+    fi
+}
+
 # Sync plugins
 sync_plugins() {
     echo -e "${YELLOW}Installing plugins (this may take a minute)...${NC}"
@@ -85,6 +108,7 @@ main() {
     
     backup_config
     install_config
+    install_99_plugin
     sync_plugins
     
     echo ""
@@ -96,8 +120,17 @@ main() {
     echo "  <leader>e   = File explorer"
     echo "  <leader>ff  = Find files"
     echo "  <leader>fg  = Live grep"
+    echo ""
+    echo "Debugging:"
     echo "  <leader>db  = Toggle breakpoint"
     echo "  <leader>dc  = Start/continue debug"
+    echo ""
+    echo "99 AI Agent (requires OpenCode/Claude/Copilot CLI):"
+    echo "  <leader>9f  = Fill in function"
+    echo "  <leader>9v  = Process visual selection"
+    echo "  :NNOpenCode = Switch to OpenCode provider"
+    echo "  :NNClaude   = Switch to Claude CLI"
+    echo "  :NNCopilot  = Switch to Copilot CLI"
 }
 
 main "$@"
