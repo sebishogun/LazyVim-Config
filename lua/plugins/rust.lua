@@ -23,6 +23,17 @@ return {
                 enable = true,
               },
             },
+            -- Use Clippy for flycheck diagnostics
+            -- Override deny-by-default lints that don't provide auto-fixes
+            check = {
+              command = "clippy",
+              extraArgs = {
+                "--",
+                -- Downgrade approx_constant from error to warning
+                -- (it's deny-by-default but has no auto-fix, which is frustrating UX)
+                "-W", "clippy::approx_constant",
+              },
+            },
             checkOnSave = true,
             procMacro = {
               enable = true,
