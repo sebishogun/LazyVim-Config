@@ -35,7 +35,7 @@ return {
 
   -- Ensure mini.icons has proper Rust/Cargo icons
   {
-    "echasnovski/mini.icons",
+    "nvim-mini/mini.icons",
     opts = {
       file = {
         -- Rust-specific files
