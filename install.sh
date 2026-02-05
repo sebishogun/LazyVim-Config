@@ -73,13 +73,13 @@ install_nerd_font() {
 install_deps() {
     echo -e "${YELLOW}Installing dependencies...${NC}"
     if command -v apt-get &> /dev/null; then
-        sudo apt-get update && sudo apt-get install -y git curl unzip ripgrep fd-find nodejs npm python3 python3-pip python3-venv build-essential
+        sudo apt-get update && sudo apt-get install -y git curl unzip ripgrep fd-find nodejs npm python3 python3-pip python3-venv build-essential jq
     elif command -v dnf &> /dev/null; then
-        sudo dnf install -y git curl unzip ripgrep fd-find nodejs npm python3 python3-pip gcc gcc-c++
+        sudo dnf install -y git curl unzip ripgrep fd-find nodejs npm python3 python3-pip gcc gcc-c++ jq
     elif command -v pacman &> /dev/null; then
-        sudo pacman -Syu --noconfirm git curl unzip ripgrep fd nodejs npm python python-pip base-devel
+        sudo pacman -Syu --noconfirm git curl unzip ripgrep fd nodejs npm python python-pip base-devel jq
     elif command -v brew &> /dev/null; then
-        brew install git curl unzip ripgrep fd node python
+        brew install git curl unzip ripgrep fd node python jq
     else
         echo -e "${RED}Unknown package manager. Install git, ripgrep, fd, node, python manually.${NC}"
     fi

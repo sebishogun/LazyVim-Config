@@ -1,6 +1,11 @@
 -- after/ftplugin/rust.lua - Rust-specific keymaps (rustaceanvim)
 -- These keymaps only apply in Rust files
 
+-- Guard: only set keymaps if rustaceanvim is loaded
+if not vim.g.rustaceanvim then
+  return
+end
+
 local bufnr = vim.api.nvim_get_current_buf()
 
 -- Helper function for buffer-local keymaps

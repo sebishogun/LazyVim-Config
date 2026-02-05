@@ -6,8 +6,7 @@ return {
   {
     "mrcjkb/rustaceanvim",
     version = "^7", -- Recommended: pin to major version
-    lazy = false,   -- Already lazy by design (loads on .rs files)
-    ft = { "rust" },
+    ft = { "rust" }, -- Lazy loads on Rust files
     opts = {
       server = {
         on_attach = function(client, bufnr)
@@ -86,20 +85,19 @@ return {
     end,
   },
 
-  -- Ensure rust-analyzer is installed via Mason
+  -- Ensure rust-analyzer and codelldb are installed via Mason
   {
     "mason-org/mason.nvim",
-    opts = {
-      ensure_installed = {
-        "rust-analyzer",
-        "codelldb",
-      },
-    },
+    opts = function(_, opts)
+      opts.ensure_installed = opts.ensure_installed or {}
+      vim.list_extend(opts.ensure_installed, { "rust-analyzer", "codelldb" })
+    end,
   },
 
-  -- Optional: crates.nvim for Cargo.toml management
+  -- crates.nvim for Cargo.toml management
   {
     "saecki/crates.nvim",
+    dependencies = { "hrsh7th/nvim-cmp" },
     event = { "BufRead Cargo.toml" },
     opts = {
       completion = {

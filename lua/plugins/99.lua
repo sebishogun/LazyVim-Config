@@ -15,11 +15,34 @@ return {
         vim.opt.runtimepath:append(plugin_path)
       end
 
-      local _99 = require("99")
+      -- Protected require - bail out gracefully if plugin not found
+      local ok, _99 = pcall(require, "99")
+      if not ok then
+        vim.notify("99 plugin not found at " .. plugin_path, vim.log.levels.WARN)
+        return
+      end
 
       -- Get the cwd basename for log file naming
       local cwd = vim.uv.cwd()
       local basename = vim.fs.basename(cwd)
+
+      -- Helper: check if gh copilot is available (cached to avoid repeated calls)
+      local _copilot_available = nil
+      local function is_copilot_available()
+        if _copilot_available ~= nil then
+          return _copilot_available
+        end
+        if vim.fn.executable("copilot") == 1 then
+          _copilot_available = true
+        elseif vim.fn.executable("gh") == 1 then
+          -- Only check gh copilot if gh is available
+          vim.fn.system("gh copilot --help 2>/dev/null")
+          _copilot_available = (vim.v.shell_error == 0)
+        else
+          _copilot_available = false
+        end
+        return _copilot_available
+      end
 
       -- Auto-detect best available AI CLI provider
       -- Priority: OpenCode > Claude Code > Copilot CLI
@@ -28,12 +51,8 @@ return {
           return _99.Providers.OpenCodeProvider, "anthropic/claude-opus-4-5"
         elseif vim.fn.executable("claude") == 1 then
           return _99.Providers.ClaudeCodeProvider, "opus"
-        elseif vim.fn.executable("gh") == 1 then
-          -- Check if copilot extension is installed
-          local result = vim.fn.system("gh copilot --help 2>/dev/null")
-          if vim.v.shell_error == 0 then
-            return _99.Providers.CopilotCLIProvider, "claude-sonnet-4.5"
-          end
+        elseif is_copilot_available() then
+          return _99.Providers.CopilotCLIProvider, "claude-sonnet-4.5"
         end
         -- Fallback to OpenCode (will error if not installed, prompting user to install)
         return _99.Providers.OpenCodeProvider, "anthropic/claude-opus-4-5"
@@ -203,7 +222,7 @@ return {
         print("Available CLIs:")
         print("  OpenCode: " .. (vim.fn.executable("opencode") == 1 and "✓" or "✗"))
         print("  Claude:   " .. (vim.fn.executable("claude") == 1 and "✓" or "✗"))
-        print("  Copilot:  " .. (vim.fn.executable("gh") == 1 and vim.fn.system("gh copilot --help 2>/dev/null") and vim.v.shell_error == 0 and "✓" or "✗"))
+        print("  Copilot:  " .. (is_copilot_available() and "✓" or "✗"))
       end, { desc = "Show 99 plugin status" })
     end,
   },

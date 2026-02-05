@@ -4,12 +4,12 @@ return {
     opts = {
       servers = {
         gopls = { settings = { gopls = { staticcheck = true, gofumpt = true, usePlaceholders = true, analyses = { unusedparams = true, shadow = true, fieldalignment = true, nilness = true, unusedwrite = true, useany = true }, hints = { assignVariableTypes = true, compositeLiteralFields = true, constantValues = true, functionTypeParameters = true, parameterNames = true, rangeVariableTypes = true } } } },
-        rust_analyzer = {},
+        -- rust_analyzer handled by rustaceanvim (see rust.lua)
         zls = {},
         clangd = {},
         pyright = {},
         lua_ls = {},
-        tsserver = {},
+        ts_ls = {},  -- renamed from tsserver in newer lspconfig
         eslint = {},
         html = {},
         cssls = {},
