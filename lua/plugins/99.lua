@@ -194,6 +194,20 @@ return {
         print("99: Switched to Kiro")
       end, { desc = "Switch to Kiro provider" })
 
+      vim.api.nvim_create_user_command("NNGemini", function()
+        local state = _99.__get_state()
+        state.provider_override = _99.Providers.GeminiProvider
+        state.model = "gemini-2.5-pro"
+        print("99: Switched to Gemini (gemini-2.5-pro)")
+      end, { desc = "Switch to Gemini provider" })
+
+      vim.api.nvim_create_user_command("NNCodex", function()
+        local state = _99.__get_state()
+        state.provider_override = _99.Providers.CodexProvider
+        state.model = "o3"
+        print("99: Switched to Codex (o3)")
+      end, { desc = "Switch to Codex provider" })
+
       -- Set custom model
       vim.api.nvim_create_user_command("NNModel", function(opts)
         if opts.args and opts.args ~= "" then
@@ -223,6 +237,8 @@ return {
         print("  OpenCode: " .. (vim.fn.executable("opencode") == 1 and "✓" or "✗"))
         print("  Claude:   " .. (vim.fn.executable("claude") == 1 and "✓" or "✗"))
         print("  Copilot:  " .. (is_copilot_available() and "✓" or "✗"))
+        print("  Gemini:   " .. (vim.fn.executable("gemini") == 1 and "✓" or "✗"))
+        print("  Codex:    " .. (vim.fn.executable("codex") == 1 and "✓" or "✗"))
       end, { desc = "Show 99 plugin status" })
     end,
   },
