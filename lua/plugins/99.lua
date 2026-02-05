@@ -21,6 +21,26 @@ return {
       local cwd = vim.uv.cwd()
       local basename = vim.fs.basename(cwd)
 
+      -- Auto-detect best available AI CLI provider
+      -- Priority: OpenCode > Claude Code > Copilot CLI
+      local function detect_provider()
+        if vim.fn.executable("opencode") == 1 then
+          return _99.Providers.OpenCodeProvider, "anthropic/claude-opus-4-5"
+        elseif vim.fn.executable("claude") == 1 then
+          return _99.Providers.ClaudeCodeProvider, "opus"
+        elseif vim.fn.executable("gh") == 1 then
+          -- Check if copilot extension is installed
+          local result = vim.fn.system("gh copilot --help 2>/dev/null")
+          if vim.v.shell_error == 0 then
+            return _99.Providers.CopilotCLIProvider, "claude-sonnet-4.5"
+          end
+        end
+        -- Fallback to OpenCode (will error if not installed, prompting user to install)
+        return _99.Providers.OpenCodeProvider, "anthropic/claude-opus-4-5"
+      end
+
+      local default_provider, default_model = detect_provider()
+
       _99.setup({
         -- Logger configuration
         logger = {
@@ -29,9 +49,9 @@ return {
           print_on_error = true,
         },
 
-        -- Use OpenCode as the default provider (with neovim agent for ~/.cache/nvim write access)
-        provider = _99.Providers.OpenCodeProvider,
-        model = "anthropic/claude-opus-4-5",  -- Full model name for OpenCode
+        -- Auto-detected provider (OpenCode > Claude > Copilot)
+        provider = default_provider,
+        model = default_model,
 
         -- Completion settings for cmp autocomplete
         -- NOTE: Set source = "cmp" if you have nvim-cmp installed and want @ completion
@@ -165,6 +185,26 @@ return {
           print("99: Current model: " .. state.model)
         end
       end, { nargs = "?", desc = "Set or show current model" })
+
+      -- Show current provider and available providers
+      vim.api.nvim_create_user_command("NNStatus", function()
+        local state = _99.__get_state()
+        local provider_name = "Unknown"
+        if state.provider_override then
+          provider_name = state.provider_override._get_provider_name and state.provider_override:_get_provider_name() or "Custom"
+        elseif default_provider then
+          provider_name = default_provider._get_provider_name and default_provider:_get_provider_name() or "Default"
+        end
+        
+        print("99 AI Agent Status:")
+        print("  Provider: " .. provider_name)
+        print("  Model: " .. state.model)
+        print("")
+        print("Available CLIs:")
+        print("  OpenCode: " .. (vim.fn.executable("opencode") == 1 and "✓" or "✗"))
+        print("  Claude:   " .. (vim.fn.executable("claude") == 1 and "✓" or "✗"))
+        print("  Copilot:  " .. (vim.fn.executable("gh") == 1 and vim.fn.system("gh copilot --help 2>/dev/null") and vim.v.shell_error == 0 and "✓" or "✗"))
+      end, { desc = "Show 99 plugin status" })
     end,
   },
 }

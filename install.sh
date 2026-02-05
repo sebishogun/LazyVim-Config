@@ -81,13 +81,154 @@ install_99_plugin() {
         git clone https://github.com/sebishogun/99.git "$PLUGIN_DIR"
     fi
     
-    # Check if opencode is installed (default provider)
+    # Setup AI CLI providers
+    setup_ai_providers
+}
+
+# Detect and setup AI CLI providers for 99 plugin
+setup_ai_providers() {
+    echo ""
+    echo -e "${YELLOW}=== AI CLI Provider Setup ===${NC}"
+    
+    # Detect installed providers
+    HAS_OPENCODE=false
+    HAS_CLAUDE=false
+    HAS_COPILOT=false
+    
     if command -v opencode &> /dev/null; then
-        echo -e "${GREEN}OpenCode CLI found - configuring neovim agent...${NC}"
-        configure_opencode_agent
+        HAS_OPENCODE=true
+        echo -e "${GREEN}✓ OpenCode CLI found${NC}"
     else
-        echo -e "${YELLOW}Note: Install OpenCode CLI for 99 plugin: https://github.com/opencode-ai/opencode${NC}"
-        echo -e "${YELLOW}Or switch to another provider with :NNClaude, :NNCopilot, etc.${NC}"
+        echo -e "${RED}✗ OpenCode CLI not found${NC}"
+    fi
+    
+    if command -v claude &> /dev/null; then
+        HAS_CLAUDE=true
+        echo -e "${GREEN}✓ Claude Code CLI found${NC}"
+    else
+        echo -e "${RED}✗ Claude Code CLI not found${NC}"
+    fi
+    
+    if command -v gh &> /dev/null && gh copilot --help &> /dev/null; then
+        HAS_COPILOT=true
+        echo -e "${GREEN}✓ GitHub Copilot CLI found${NC}"
+    else
+        echo -e "${RED}✗ GitHub Copilot CLI not found${NC}"
+    fi
+    
+    echo ""
+    
+    # If all installed, configure and use defaults
+    if $HAS_OPENCODE && $HAS_CLAUDE && $HAS_COPILOT; then
+        echo -e "${GREEN}All AI CLI providers installed!${NC}"
+        configure_opencode_agent
+        echo -e "${GREEN}Default provider: OpenCode (switch with :NNClaude or :NNCopilot)${NC}"
+        return
+    fi
+    
+    # If at least one installed, configure what's available
+    if $HAS_OPENCODE || $HAS_CLAUDE || $HAS_COPILOT; then
+        if $HAS_OPENCODE; then
+            configure_opencode_agent
+            echo -e "${GREEN}Configured OpenCode as default provider${NC}"
+        elif $HAS_CLAUDE; then
+            echo -e "${GREEN}Claude Code available - use :NNClaude in neovim${NC}"
+        elif $HAS_COPILOT; then
+            echo -e "${GREEN}Copilot CLI available - use :NNCopilot in neovim${NC}"
+        fi
+    fi
+    
+    # Offer to install missing providers
+    if ! $HAS_OPENCODE || ! $HAS_CLAUDE || ! $HAS_COPILOT; then
+        echo ""
+        echo -e "${YELLOW}Would you like to install missing AI CLI providers?${NC}"
+        read -p "Install missing providers? [y/N] " -n 1 -r; echo
+        
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            install_ai_providers "$HAS_OPENCODE" "$HAS_CLAUDE" "$HAS_COPILOT"
+        else
+            if ! $HAS_OPENCODE && ! $HAS_CLAUDE && ! $HAS_COPILOT; then
+                echo -e "${YELLOW}Warning: No AI CLI providers installed. 99 plugin won't work without one.${NC}"
+                echo -e "${YELLOW}You can install them later manually:${NC}"
+                echo "  OpenCode:  curl -fsSL https://opencode.ai/install | bash"
+                echo "  Claude:    npm install -g @anthropic-ai/claude-code"
+                echo "  Copilot:   gh extension install github/gh-copilot"
+            fi
+        fi
+    fi
+}
+
+# Install AI CLI providers
+install_ai_providers() {
+    local has_opencode=$1
+    local has_claude=$2
+    local has_copilot=$3
+    
+    echo ""
+    
+    # Install OpenCode
+    if [[ "$has_opencode" == "false" ]]; then
+        echo ""
+        read -p "Install OpenCode CLI? (recommended) [Y/n] " -n 1 -r; echo
+        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+            echo -e "${YELLOW}Installing OpenCode CLI...${NC}"
+            if curl -fsSL https://opencode.ai/install | bash; then
+                echo -e "${GREEN}OpenCode CLI installed!${NC}"
+                # Refresh PATH
+                export PATH="$HOME/.opencode/bin:$PATH"
+                if command -v opencode &> /dev/null; then
+                    configure_opencode_agent
+                    echo -e "${GREEN}OpenCode configured as default provider${NC}"
+                fi
+            else
+                echo -e "${RED}Failed to install OpenCode CLI${NC}"
+            fi
+        fi
+    fi
+    
+    # Install Claude Code
+    if [[ "$has_claude" == "false" ]]; then
+        echo ""
+        read -p "Install Claude Code CLI? [Y/n] " -n 1 -r; echo
+        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+            echo -e "${YELLOW}Installing Claude Code CLI...${NC}"
+            if command -v npm &> /dev/null; then
+                if npm install -g @anthropic-ai/claude-code; then
+                    echo -e "${GREEN}Claude Code CLI installed!${NC}"
+                    echo -e "${YELLOW}Note: Run 'claude' once to authenticate with Anthropic${NC}"
+                else
+                    echo -e "${RED}Failed to install Claude Code CLI${NC}"
+                fi
+            else
+                echo -e "${RED}npm not found. Install Node.js first.${NC}"
+            fi
+        fi
+    fi
+    
+    # Install GitHub Copilot CLI
+    if [[ "$has_copilot" == "false" ]]; then
+        echo ""
+        read -p "Install GitHub Copilot CLI? [Y/n] " -n 1 -r; echo
+        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+            echo -e "${YELLOW}Installing GitHub Copilot CLI...${NC}"
+            if command -v gh &> /dev/null; then
+                # Check if authenticated
+                if ! gh auth status &> /dev/null; then
+                    echo -e "${YELLOW}GitHub CLI not authenticated. Running 'gh auth login'...${NC}"
+                    gh auth login
+                fi
+                
+                if gh extension install github/gh-copilot; then
+                    echo -e "${GREEN}GitHub Copilot CLI installed!${NC}"
+                    echo -e "${YELLOW}Note: Requires GitHub Copilot subscription${NC}"
+                else
+                    echo -e "${RED}Failed to install GitHub Copilot CLI${NC}"
+                fi
+            else
+                echo -e "${RED}GitHub CLI (gh) not found. Install it first:${NC}"
+                echo "  https://cli.github.com/"
+            fi
+        fi
     fi
 }
 
