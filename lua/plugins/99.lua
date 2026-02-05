@@ -204,8 +204,8 @@ return {
       vim.api.nvim_create_user_command("NNCodex", function()
         local state = _99.__get_state()
         state.provider_override = _99.Providers.CodexProvider
-        state.model = "o3"
-        print("99: Switched to Codex (o3)")
+        state.model = "codex-5.2"
+        print("99: Switched to Codex (codex-5.2)")
       end, { desc = "Switch to Codex provider" })
 
       -- Set custom model
