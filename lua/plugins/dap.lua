@@ -227,68 +227,7 @@ return {
         })
       end
 
-      dap.configurations.rust = {
-        {
-          name = "Debug Binary",
-          type = "codelldb",
-          request = "launch",
-          program = function()
-            local root = get_rust_root()
-            return vim.fn.input("Path to executable: ", root .. "/target/debug/", "file")
-          end,
-          cwd = get_rust_root,
-          projectRoot = get_rust_root,
-          stopOnEntry = false,
-        },
-        {
-          name = "Debug Release Binary",
-          type = "codelldb",
-          request = "launch",
-          program = function()
-            local root = get_rust_root()
-            return vim.fn.input("Path to executable: ", root .. "/target/release/", "file")
-          end,
-          cwd = get_rust_root,
-          projectRoot = get_rust_root,
-          stopOnEntry = false,
-        },
-        {
-          name = "Debug Test",
-          type = "codelldb",
-          request = "launch",
-          program = function()
-            -- Build tests first
-            local root = get_rust_root()
-            vim.fn.system("cd " .. root .. " && cargo test --no-run 2>/dev/null")
-            -- Find the test binary
-            local test_binary = vim.fn.glob(root .. "/target/debug/deps/*-*")
-            if test_binary ~= "" then
-              local binaries = vim.split(test_binary, "\n")
-              -- Filter to only executable files (not .d files)
-              local exes = {}
-              for _, b in ipairs(binaries) do
-                if not b:match("%.d$") and vim.fn.executable(b) == 1 then
-                  table.insert(exes, b)
-                end
-              end
-              if #exes > 0 then
-                return vim.fn.input("Test binary: ", exes[1], "file")
-              end
-            end
-            return vim.fn.input("Path to test binary: ", root .. "/target/debug/deps/", "file")
-          end,
-          cwd = get_rust_root,
-          projectRoot = get_rust_root,
-          stopOnEntry = false,
-        },
-        {
-          name = "Attach to Process",
-          type = "codelldb",
-          request = "attach",
-          pid = require("dap.utils").pick_process,
-          projectRoot = get_rust_root,
-        },
-      }
+      -- NOTE: Rust configs moved to bottom (after Java) - rustaceanvim provides better DAP integration
 
       dap.configurations.c = {
         {
@@ -558,6 +497,73 @@ return {
           hostName = "127.0.0.1",
           port = function() return tonumber(vim.fn.input("Port: ", "5005")) end,
           cwd = get_java_root,
+        },
+      }
+
+      ------------------------------------------------------------------------------
+      -- RUST (codelldb) - Fallback configs, rustaceanvim provides better integration
+      -- Use :RustLsp debug for smart debugging with rustaceanvim
+      ------------------------------------------------------------------------------
+      dap.configurations.rust = {
+        {
+          name = "Debug Binary (manual)",
+          type = "codelldb",
+          request = "launch",
+          program = function()
+            local root = get_rust_root()
+            return vim.fn.input("Path to executable: ", root .. "/target/debug/", "file")
+          end,
+          cwd = get_rust_root,
+          projectRoot = get_rust_root,
+          stopOnEntry = false,
+        },
+        {
+          name = "Debug Release Binary (manual)",
+          type = "codelldb",
+          request = "launch",
+          program = function()
+            local root = get_rust_root()
+            return vim.fn.input("Path to executable: ", root .. "/target/release/", "file")
+          end,
+          cwd = get_rust_root,
+          projectRoot = get_rust_root,
+          stopOnEntry = false,
+        },
+        {
+          name = "Debug Test (manual)",
+          type = "codelldb",
+          request = "launch",
+          program = function()
+            -- Build tests first
+            local root = get_rust_root()
+            vim.fn.system("cd " .. root .. " && cargo test --no-run 2>/dev/null")
+            -- Find the test binary
+            local test_binary = vim.fn.glob(root .. "/target/debug/deps/*-*")
+            if test_binary ~= "" then
+              local binaries = vim.split(test_binary, "\n")
+              -- Filter to only executable files (not .d files)
+              local exes = {}
+              for _, b in ipairs(binaries) do
+                if not b:match("%.d$") and vim.fn.executable(b) == 1 then
+                  table.insert(exes, b)
+                end
+              end
+              if #exes > 0 then
+                return vim.fn.input("Test binary: ", exes[1], "file")
+              end
+            end
+            return vim.fn.input("Path to test binary: ", root .. "/target/debug/deps/", "file")
+          end,
+          cwd = get_rust_root,
+          projectRoot = get_rust_root,
+          stopOnEntry = false,
+        },
+        {
+          name = "Attach to Process",
+          type = "codelldb",
+          request = "attach",
+          pid = require("dap.utils").pick_process,
+          projectRoot = get_rust_root,
         },
       }
 

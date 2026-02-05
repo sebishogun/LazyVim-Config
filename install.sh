@@ -10,6 +10,65 @@ RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 OS="$(uname -s)"
 echo -e "${GREEN}Detected OS: $OS${NC}"
 
+# Check and install Nerd Font (required for icons)
+check_nerd_font() {
+    echo -e "${YELLOW}Checking for Nerd Font...${NC}"
+    
+    # Check if any Nerd Font is installed
+    if fc-list 2>/dev/null | grep -qi "nerd"; then
+        NERD_FONT=$(fc-list 2>/dev/null | grep -i "nerd" | head -1 | cut -d: -f2 | xargs)
+        echo -e "${GREEN}Nerd Font found: $NERD_FONT${NC}"
+        return 0
+    fi
+    
+    echo -e "${RED}No Nerd Font detected!${NC}"
+    echo -e "${YELLOW}Nerd Fonts are required for icons in neo-tree, statusline, etc.${NC}"
+    
+    read -p "Install JetBrainsMono Nerd Font? [Y/n] " -n 1 -r; echo
+    if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+        install_nerd_font
+    else
+        echo -e "${YELLOW}Warning: Icons may not display correctly without a Nerd Font.${NC}"
+        echo -e "${YELLOW}Install manually: https://www.nerdfonts.com/${NC}"
+        echo -e "${YELLOW}Then configure your terminal to use the Nerd Font.${NC}"
+    fi
+}
+
+install_nerd_font() {
+    echo -e "${YELLOW}Installing JetBrainsMono Nerd Font...${NC}"
+    
+    FONT_DIR=""
+    if [[ "$OS" == "Linux" ]]; then
+        FONT_DIR="$HOME/.local/share/fonts"
+    elif [[ "$OS" == "Darwin" ]]; then
+        FONT_DIR="$HOME/Library/Fonts"
+    fi
+    
+    mkdir -p "$FONT_DIR"
+    
+    # Download and install JetBrainsMono Nerd Font
+    FONT_URL="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip"
+    TEMP_DIR=$(mktemp -d)
+    
+    if curl -fsSL "$FONT_URL" -o "$TEMP_DIR/JetBrainsMono.zip"; then
+        unzip -q "$TEMP_DIR/JetBrainsMono.zip" -d "$TEMP_DIR/fonts"
+        cp "$TEMP_DIR/fonts"/*.ttf "$FONT_DIR/" 2>/dev/null || true
+        rm -rf "$TEMP_DIR"
+        
+        # Refresh font cache on Linux
+        if [[ "$OS" == "Linux" ]] && command -v fc-cache &> /dev/null; then
+            fc-cache -f
+        fi
+        
+        echo -e "${GREEN}JetBrainsMono Nerd Font installed!${NC}"
+        echo -e "${YELLOW}IMPORTANT: Configure your terminal to use 'JetBrainsMono Nerd Font'${NC}"
+        echo -e "${YELLOW}Terminal settings > Font > JetBrainsMono Nerd Font${NC}"
+    else
+        echo -e "${RED}Failed to download Nerd Font${NC}"
+        echo -e "${YELLOW}Install manually: https://www.nerdfonts.com/${NC}"
+    fi
+}
+
 # Install dependencies
 install_deps() {
     echo -e "${YELLOW}Installing dependencies...${NC}"
@@ -310,6 +369,11 @@ sync_plugins() {
 # Main
 main() {
     echo ""
+    
+    # Check Nerd Font first (required for icons)
+    check_nerd_font
+    echo ""
+    
     read -p "Install system dependencies? [y/N] " -n 1 -r; echo
     [[ $REPLY =~ ^[Yy]$ ]] && install_deps
     
@@ -331,9 +395,20 @@ main() {
     echo "  <leader>ff  = Find files"
     echo "  <leader>fg  = Live grep"
     echo ""
-    echo "Debugging:"
+    echo "Debugging (all languages):"
     echo "  <leader>db  = Toggle breakpoint"
     echo "  <leader>dc  = Start/continue debug"
+    echo "  <leader>di  = Step into"
+    echo "  <leader>do  = Step over"
+    echo "  <leader>dt  = Terminate"
+    echo ""
+    echo "Rust (rustaceanvim - in .rs files):"
+    echo "  <leader>rr  = Run at cursor"
+    echo "  <leader>rd  = Debug at cursor"
+    echo "  <leader>rt  = Test at cursor"
+    echo "  <leader>rm  = Expand macro"
+    echo "  <leader>re  = Explain error"
+    echo "  <leader>rc  = Open Cargo.toml"
     echo ""
     echo "99 AI Agent (requires OpenCode/Claude/Copilot CLI):"
     echo "  <leader>9f  = Fill in function"
