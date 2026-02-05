@@ -29,9 +29,9 @@ return {
           print_on_error = true,
         },
 
-        -- Use Claude CLI as the default provider (OpenCode auto-rejects file permissions in run mode)
-        provider = _99.Providers.ClaudeCodeProvider,
-        model = "opus",  -- Use alias: opus, sonnet, haiku
+        -- Use OpenCode as the default provider (with neovim agent for ~/.cache/nvim write access)
+        provider = _99.Providers.OpenCodeProvider,
+        model = "anthropic/claude-opus-4-5",  -- Full model name for OpenCode
 
         -- Completion settings for cmp autocomplete
         -- NOTE: Set source = "cmp" if you have nvim-cmp installed and want @ completion
@@ -124,7 +124,7 @@ return {
         local state = _99.__get_state()
         state.provider_override = _99.Providers.OpenCodeProvider
         state.model = "anthropic/claude-opus-4-5"
-        print("99: Switched to OpenCode (NOTE: may not work due to permission restrictions)")
+        print("99: Switched to OpenCode (using neovim agent)")
       end, { desc = "Switch to OpenCode provider" })
 
       vim.api.nvim_create_user_command("NNClaude", function()

@@ -83,10 +83,79 @@ install_99_plugin() {
     
     # Check if opencode is installed (default provider)
     if command -v opencode &> /dev/null; then
-        echo -e "${GREEN}OpenCode CLI found - 99 plugin ready!${NC}"
+        echo -e "${GREEN}OpenCode CLI found - configuring neovim agent...${NC}"
+        configure_opencode_agent
     else
         echo -e "${YELLOW}Note: Install OpenCode CLI for 99 plugin: https://github.com/opencode-ai/opencode${NC}"
         echo -e "${YELLOW}Or switch to another provider with :NNClaude, :NNCopilot, etc.${NC}"
+    fi
+}
+
+# Configure OpenCode with neovim agent for 99 plugin
+configure_opencode_agent() {
+    OPENCODE_CONFIG="$HOME/.config/opencode/config.json"
+    mkdir -p "$HOME/.config/opencode"
+    
+    # Neovim agent config - allows external file writes for 99 plugin temp files
+    NEOVIM_AGENT='{
+  "neovim": {
+    "description": "Agent for neovim 99 plugin - allows all file writes",
+    "mode": "all",
+    "permission": {
+      "external_directory": "allow",
+      "read": "allow",
+      "edit": "allow",
+      "bash": "allow",
+      "glob": "allow",
+      "grep": "allow",
+      "list": "allow",
+      "question": "deny",
+      "doom_loop": "deny"
+    }
+  }
+}'
+
+    if [[ -f "$OPENCODE_CONFIG" ]]; then
+        # Check if neovim agent already configured
+        if grep -q '"neovim"' "$OPENCODE_CONFIG" 2>/dev/null; then
+            echo -e "${GREEN}OpenCode neovim agent already configured${NC}"
+            return
+        fi
+        
+        # Add neovim agent to existing config using jq if available
+        if command -v jq &> /dev/null; then
+            # Merge agent config into existing config
+            jq --argjson agent "$NEOVIM_AGENT" '.agent = (.agent // {}) + $agent' "$OPENCODE_CONFIG" > "$OPENCODE_CONFIG.tmp" && mv "$OPENCODE_CONFIG.tmp" "$OPENCODE_CONFIG"
+            echo -e "${GREEN}Added neovim agent to OpenCode config${NC}"
+        else
+            echo -e "${YELLOW}jq not found - please manually add neovim agent to $OPENCODE_CONFIG${NC}"
+            echo -e "${YELLOW}See: https://github.com/sebishogun/99#opencode-setup${NC}"
+        fi
+    else
+        # Create new config with neovim agent
+        cat > "$OPENCODE_CONFIG" << 'EOF'
+{
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "neovim": {
+      "description": "Agent for neovim 99 plugin - allows all file writes",
+      "mode": "all",
+      "permission": {
+        "external_directory": "allow",
+        "read": "allow",
+        "edit": "allow",
+        "bash": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "question": "deny",
+        "doom_loop": "deny"
+      }
+    }
+  }
+}
+EOF
+        echo -e "${GREEN}Created OpenCode config with neovim agent${NC}"
     fi
 }
 
