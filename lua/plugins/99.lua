@@ -175,11 +175,13 @@ return {
         elseif provider_name == "ClaudeCodeProvider" then
           -- Claude CLI doesn't have model list, use known models
           cached_models = {
-            "opus",
-            "sonnet",
+            "claude-opus-4-6",
             "claude-opus-4-5",
             "claude-sonnet-4-5",
             "claude-sonnet-4",
+            "claude-haiku-4-5",
+            "opus",
+            "sonnet",
           }
           current_provider_name = provider_name
           sync_cache()
@@ -188,8 +190,11 @@ return {
         elseif provider_name == "CodexProvider" then
           -- Codex CLI doesn't have model list, use known models
           cached_models = {
-            "gpt-codex-5.2-xhigh",
+            "gpt-codex-5.3",
+            "gpt-codex-5.2",
+            "gpt-5.2-codex",
             "gpt-5.1-codex-max",
+            "gpt-5.1-codex",
             "o3",
             "o4-mini",
           }
@@ -232,38 +237,42 @@ return {
       vim.api.nvim_create_user_command("NNOpenCode", function()
         local state = _99.__get_state()
         state.provider_override = _99.Providers.OpenCodeProvider
-        state.model = "anthropic/claude-opus-4-5"
+        state.model = "anthropic/claude-opus-4-6"
         fetch_models("OpenCodeProvider", function()
-          print("99: Switched to OpenCode (claude-opus-4-5) - " .. #cached_models .. " models available")
+          print("99: Switched to OpenCode (claude-opus-4-6) - " .. #cached_models .. " models available")
         end)
       end, { desc = "Switch to OpenCode provider" })
 
       vim.api.nvim_create_user_command("NNOpenAI", function()
         local state = _99.__get_state()
         state.provider_override = _99.Providers.OpenCodeProvider
-        state.model = "gpt-codex-5.2-xhigh"
+        state.model = "openai/gpt-codex-5.3"
         fetch_models("OpenCodeProvider", function()
-          print("99: Switched to OpenCode (gpt-codex-5.2-xhigh) - " .. #cached_models .. " models available")
+          print("99: Switched to OpenCode (gpt-codex-5.3) - " .. #cached_models .. " models available")
         end)
       end, { desc = "Switch to OpenCode with OpenAI model" })
 
       vim.api.nvim_create_user_command("NNClaude", function()
         local state = _99.__get_state()
         state.provider_override = _99.Providers.ClaudeCodeProvider
-        state.model = "opus"
+        state.model = "claude-opus-4-6"
         fetch_models("ClaudeCodeProvider", function()
-          print("99: Switched to Claude Code (opus) - " .. #cached_models .. " models available")
+          print("99: Switched to Claude Code (claude-opus-4-6) - " .. #cached_models .. " models available")
         end)
       end, { desc = "Switch to Claude Code provider" })
 
       vim.api.nvim_create_user_command("NNCopilot", function()
         local state = _99.__get_state()
         state.provider_override = _99.Providers.CopilotCLIProvider
-        state.model = "claude-sonnet-4"
-        cached_models = { "claude-sonnet-4", "gpt-4.1", "o4-mini", "gemini-2.5-pro" }
+        state.model = "claude-opus-4.6"
+        cached_models = {
+          "claude-opus-4.6", "claude-opus-4.5", "claude-sonnet-4.5", "claude-sonnet-4",
+          "gpt-5.2-codex", "gpt-5.2", "gpt-5.1-codex-max", "gpt-5.1",
+          "gemini-3-pro-preview", "o4-mini",
+        }
         current_provider_name = "CopilotCLIProvider"
         sync_cache()
-        print("99: Switched to Copilot CLI (claude-sonnet-4)")
+        print("99: Switched to Copilot CLI (claude-opus-4.6)")
       end, { desc = "Switch to Copilot CLI provider" })
 
       vim.api.nvim_create_user_command("NNCursor", function()
@@ -296,9 +305,9 @@ return {
       vim.api.nvim_create_user_command("NNCodex", function()
         local state = _99.__get_state()
         state.provider_override = _99.Providers.CodexProvider
-        state.model = "gpt-codex-5.2-xhigh"
+        state.model = "gpt-codex-5.3"
         fetch_models("CodexProvider", function()
-          print("99: Switched to Codex (gpt-codex-5.2-xhigh) - " .. #cached_models .. " models available")
+          print("99: Switched to Codex (gpt-codex-5.3) - " .. #cached_models .. " models available")
         end)
       end, { desc = "Switch to Codex provider" })
 
