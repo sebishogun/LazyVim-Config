@@ -6,9 +6,104 @@ echo "=== LazyVim Custom Config Installer ==="
 # Colors
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 
-# Check OS
+# Platform detection
 OS="$(uname -s)"
-echo -e "${GREEN}Detected OS: $OS${NC}"
+ARCH="$(uname -m)"
+OS_FAMILY=""
+DISTRO="unknown"
+PKG_MGR=""
+GREP_BIN="grep"
+FORCE=false
+NEED_PLUGIN_SYNC=false
+
+for arg in "$@"; do
+    case "$arg" in
+        --force)
+            FORCE=true
+            ;;
+    esac
+done
+
+detect_platform() {
+    case "$OS" in
+        Linux)
+            OS_FAMILY="linux"
+            if [[ -f /etc/os-release ]]; then
+                . /etc/os-release
+                DISTRO="${ID:-unknown}"
+            fi
+
+            if command -v apt-get &> /dev/null; then
+                PKG_MGR="apt"
+            elif command -v dnf &> /dev/null; then
+                PKG_MGR="dnf"
+            elif command -v pacman &> /dev/null; then
+                PKG_MGR="pacman"
+            else
+                PKG_MGR="unknown"
+            fi
+            ;;
+        Darwin)
+            OS_FAMILY="macos"
+            DISTRO="macos"
+            if command -v brew &> /dev/null; then
+                PKG_MGR="brew"
+            else
+                PKG_MGR="unknown"
+            fi
+
+            if command -v ggrep &> /dev/null; then
+                GREP_BIN="ggrep"
+            fi
+            ;;
+        *)
+            echo -e "${RED}Unsupported OS: $OS${NC}"
+            echo -e "${YELLOW}This installer currently supports Linux and macOS only.${NC}"
+            exit 1
+            ;;
+    esac
+
+    echo -e "${GREEN}Detected platform: OS=$OS_FAMILY distro=$DISTRO pkg=$PKG_MGR arch=$ARCH${NC}"
+}
+
+is_managed_config() {
+    local cfg="$HOME/.config/nvim/lua/plugins/99.lua"
+    [[ -f "$cfg" ]] && grep -q 'dir = "~/neovim-configs/99"' "$cfg"
+}
+
+has_required_deps() {
+    local missing=0
+    command -v git &> /dev/null || missing=1
+    command -v curl &> /dev/null || missing=1
+    command -v unzip &> /dev/null || missing=1
+    command -v rg &> /dev/null || missing=1
+    command -v jq &> /dev/null || missing=1
+    command -v bc &> /dev/null || missing=1
+    if ! command -v fd &> /dev/null && ! command -v fdfind &> /dev/null; then
+        missing=1
+    fi
+    return $missing
+}
+
+nvim_meets_requirement() {
+    if ! command -v nvim &> /dev/null; then
+        return 1
+    fi
+    local ver
+    ver=$(nvim --version | head -1 | "$GREP_BIN" -oP '\d+\.\d+')
+    [[ -n "$ver" ]] && (( $(echo "$ver >= 0.10" | bc -l) ))
+}
+
+all_required_parsers_installed() {
+    local parsers=(rust go zig java elixir cpp ruby)
+    local p
+    for p in "${parsers[@]}"; do
+        if [[ ! -f "$HOME/.local/share/nvim/site/parser/${p}.so" ]] && [[ ! -f "$HOME/.local/share/nvim/lazy/nvim-treesitter/parser/${p}.so" ]]; then
+            return 1
+        fi
+    done
+    return 0
+}
 
 # Check and install Nerd Font (required for icons)
 check_nerd_font() {
@@ -72,43 +167,59 @@ install_nerd_font() {
 # Install dependencies
 install_deps() {
     echo -e "${YELLOW}Installing dependencies...${NC}"
-    if command -v apt-get &> /dev/null; then
-        sudo apt-get update && sudo apt-get install -y git curl unzip ripgrep fd-find nodejs npm python3 python3-pip python3-venv build-essential jq
-    elif command -v dnf &> /dev/null; then
-        sudo dnf install -y git curl unzip ripgrep fd-find nodejs npm python3 python3-pip gcc gcc-c++ jq
-    elif command -v pacman &> /dev/null; then
-        sudo pacman -Syu --noconfirm git curl unzip ripgrep fd nodejs npm python python-pip base-devel jq
-    elif command -v brew &> /dev/null; then
-        brew install git curl unzip ripgrep fd node python jq
-    else
-        echo -e "${RED}Unknown package manager. Install git, ripgrep, fd, node, python manually.${NC}"
-    fi
+    case "$PKG_MGR" in
+        apt)
+            sudo apt-get update && sudo apt-get install -y git curl unzip ripgrep fd-find nodejs npm python3 python3-pip python3-venv build-essential jq bc grep
+            ;;
+        dnf)
+            sudo dnf install -y git curl unzip ripgrep fd-find nodejs npm python3 python3-pip gcc gcc-c++ jq bc grep
+            ;;
+        pacman)
+            sudo pacman -Syu --noconfirm git curl unzip ripgrep fd nodejs npm python python-pip base-devel jq bc grep
+            ;;
+        brew)
+            brew install git curl unzip ripgrep fd node python jq bc grep
+            ;;
+        *)
+            echo -e "${RED}Unknown package manager. Install git, ripgrep, fd, node, python, jq, bc, grep manually.${NC}"
+            ;;
+    esac
 }
 
 # Install Neovim
 install_neovim() {
     echo -e "${YELLOW}Installing Neovim...${NC}"
     if command -v nvim &> /dev/null; then
-        NVIM_VER=$(nvim --version | head -1 | grep -oP '\d+\.\d+')
+        NVIM_VER=$(nvim --version | head -1 | "$GREP_BIN" -oP '\d+\.\d+')
         if (( $(echo "$NVIM_VER >= 0.10" | bc -l) )); then
             echo -e "${GREEN}Neovim $NVIM_VER already installed${NC}"
             return
         fi
     fi
     
-    if [[ "$OS" == "Linux" ]]; then
+    if [[ "$OS_FAMILY" == "linux" ]]; then
         curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux64.tar.gz
         sudo rm -rf /opt/nvim && sudo tar -C /opt -xzf nvim-linux64.tar.gz
         sudo ln -sf /opt/nvim-linux64/bin/nvim /usr/local/bin/nvim
         rm nvim-linux64.tar.gz
-    elif [[ "$OS" == "Darwin" ]]; then
-        brew install neovim
+    elif [[ "$OS_FAMILY" == "macos" ]]; then
+        if command -v brew &> /dev/null; then
+            brew install neovim
+        else
+            echo -e "${RED}Homebrew not found. Install Homebrew first: https://brew.sh${NC}"
+            return 1
+        fi
     fi
     echo -e "${GREEN}Neovim installed: $(nvim --version | head -1)${NC}"
 }
 
 # Backup existing config
 backup_config() {
+    if [[ "$FORCE" == "false" ]] && is_managed_config; then
+        echo -e "${GREEN}Managed Neovim config already installed, skipping backup/reset${NC}"
+        return
+    fi
+
     if [[ -d "$HOME/.config/nvim" ]]; then
         BACKUP="$HOME/.config/nvim.backup.$(date +%Y%m%d%H%M%S)"
         echo -e "${YELLOW}Backing up existing config to $BACKUP${NC}"
@@ -121,9 +232,17 @@ backup_config() {
 install_config() {
     echo -e "${YELLOW}Installing config...${NC}"
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+    if [[ "$FORCE" == "false" ]] && is_managed_config; then
+        echo -e "${GREEN}Config already installed and managed by this setup, skipping copy${NC}"
+        return
+    fi
+
     mkdir -p "$HOME/.config"
     cp -r "$SCRIPT_DIR" "$HOME/.config/nvim"
     rm -f "$HOME/.config/nvim/install.sh" "$HOME/.config/nvim/uninstall.sh" "$HOME/.config/nvim/README.md" "$HOME/.config/nvim/.git" 2>/dev/null || true
+    rm -rf "$HOME/.config/nvim/.git" 2>/dev/null || true
+    NEED_PLUGIN_SYNC=true
 }
 
 # Install 99 AI agent plugin (fork with CopilotCLI support)
@@ -132,12 +251,35 @@ install_99_plugin() {
     PLUGIN_DIR="$HOME/neovim-configs/99"
     
     if [[ -d "$PLUGIN_DIR" ]]; then
-        echo -e "${GREEN}99 plugin already exists, pulling latest...${NC}"
-        cd "$PLUGIN_DIR" && git pull origin master
+        echo -e "${GREEN}99 plugin directory exists${NC}"
+
+        if [[ "$FORCE" == "true" ]]; then
+            echo -e "${YELLOW}--force enabled, pulling latest...${NC}"
+            cd "$PLUGIN_DIR" && git pull origin master
+            NEED_PLUGIN_SYNC=true
+        elif git -C "$PLUGIN_DIR" rev-parse --is-inside-work-tree &> /dev/null; then
+            if [[ -n "$(git -C "$PLUGIN_DIR" status --porcelain 2>/dev/null)" ]]; then
+                echo -e "${YELLOW}99 repo has local changes, skipping pull to preserve worktree${NC}"
+            else
+                git -C "$PLUGIN_DIR" fetch origin master --quiet || true
+                LOCAL_SHA=$(git -C "$PLUGIN_DIR" rev-parse HEAD 2>/dev/null || echo "")
+                REMOTE_SHA=$(git -C "$PLUGIN_DIR" rev-parse origin/master 2>/dev/null || echo "")
+                if [[ -n "$LOCAL_SHA" && -n "$REMOTE_SHA" && "$LOCAL_SHA" != "$REMOTE_SHA" ]]; then
+                    echo -e "${YELLOW}99 plugin update available, pulling latest...${NC}"
+                    git -C "$PLUGIN_DIR" pull origin master
+                    NEED_PLUGIN_SYNC=true
+                else
+                    echo -e "${GREEN}99 plugin already up to date${NC}"
+                fi
+            fi
+        else
+            echo -e "${YELLOW}$PLUGIN_DIR exists but is not a git repo, leaving as-is${NC}"
+        fi
     else
         echo -e "${YELLOW}Cloning 99 plugin fork...${NC}"
         mkdir -p "$HOME/neovim-configs"
         git clone https://github.com/sebishogun/99.git "$PLUGIN_DIR"
+        NEED_PLUGIN_SYNC=true
     fi
     
     # Setup AI CLI providers
@@ -170,7 +312,7 @@ setup_ai_providers() {
         echo -e "${RED}✗ Claude Code CLI not found${NC}"
     fi
     
-    if command -v gh &> /dev/null && gh copilot --help &> /dev/null; then
+    if command -v copilot &> /dev/null; then
         HAS_COPILOT=true
         echo -e "${GREEN}✓ GitHub Copilot CLI found${NC}"
     else
@@ -227,7 +369,7 @@ setup_ai_providers() {
         # Re-check after potential installation
         command -v opencode &> /dev/null && HAS_OPENCODE=true
         command -v claude &> /dev/null && HAS_CLAUDE=true
-        (command -v gh &> /dev/null && gh copilot --help &> /dev/null) && HAS_COPILOT=true
+        command -v copilot &> /dev/null && HAS_COPILOT=true
         
         if ! $HAS_OPENCODE && ! $HAS_CLAUDE && ! $HAS_COPILOT && ! $HAS_GEMINI && ! $HAS_CODEX; then
             echo ""
@@ -235,7 +377,7 @@ setup_ai_providers() {
             echo -e "${YELLOW}Install options:${NC}"
             echo "  OpenCode:  curl -fsSL https://opencode.ai/install | bash"
             echo "  Claude:    npm install -g @anthropic-ai/claude-code"
-            echo "  Copilot:   gh extension install github/gh-copilot"
+            echo "  Copilot:   curl -fsSL https://gh.io/copilot-install | bash"
             echo "  Gemini:    npm install -g @google/gemini-cli"
             echo "  Codex:     npm install -g @openai/codex"
         fi
@@ -295,22 +437,11 @@ install_ai_providers() {
         read -p "Install GitHub Copilot CLI? [Y/n] " -n 1 -r; echo
         if [[ ! $REPLY =~ ^[Nn]$ ]]; then
             echo -e "${YELLOW}Installing GitHub Copilot CLI...${NC}"
-            if command -v gh &> /dev/null; then
-                # Check if authenticated
-                if ! gh auth status &> /dev/null; then
-                    echo -e "${YELLOW}GitHub CLI not authenticated. Running 'gh auth login'...${NC}"
-                    gh auth login
-                fi
-                
-                if gh extension install github/gh-copilot; then
-                    echo -e "${GREEN}GitHub Copilot CLI installed!${NC}"
-                    echo -e "${YELLOW}Note: Requires GitHub Copilot subscription${NC}"
-                else
-                    echo -e "${RED}Failed to install GitHub Copilot CLI${NC}"
-                fi
+            if curl -fsSL https://gh.io/copilot-install | bash; then
+                echo -e "${GREEN}GitHub Copilot CLI installed!${NC}"
+                echo -e "${YELLOW}Note: Run 'copilot' once to authenticate and select account${NC}"
             else
-                echo -e "${RED}GitHub CLI (gh) not found. Install it first:${NC}"
-                echo "  https://cli.github.com/"
+                echo -e "${RED}Failed to install GitHub Copilot CLI${NC}"
             fi
         fi
     fi
@@ -387,6 +518,11 @@ EOF
 # Install treesitter parsers required by 99 plugin
 install_treesitter_parsers() {
     echo -e "${YELLOW}Installing treesitter parsers for 99 plugin...${NC}"
+
+    if [[ "$FORCE" == "false" ]] && all_required_parsers_installed; then
+        echo -e "${GREEN}Required treesitter parsers already installed, skipping${NC}"
+        return
+    fi
     
     # Parsers needed for 99 plugin language support
     # These are required for the 99 AI plugin to find functions via treesitter
@@ -404,6 +540,11 @@ install_treesitter_parsers() {
 
 # Sync plugins
 sync_plugins() {
+    if [[ "$FORCE" == "false" ]] && [[ "$NEED_PLUGIN_SYNC" == "false" ]] && all_required_parsers_installed; then
+        echo -e "${GREEN}Plugins and required parsers already installed, skipping sync${NC}"
+        return
+    fi
+
     echo -e "${YELLOW}Installing plugins (this may take a minute)...${NC}"
     nvim --headless "+Lazy! sync" +qa 2>/dev/null || nvim --headless -c "lua require('lazy').sync()" -c "qa" 2>/dev/null || true
     echo -e "${GREEN}Plugins installed!${NC}"
@@ -415,16 +556,26 @@ sync_plugins() {
 # Main
 main() {
     echo ""
+    detect_platform
+    echo ""
     
     # Check Nerd Font first (required for icons)
     check_nerd_font
     echo ""
     
-    read -p "Install system dependencies? [y/N] " -n 1 -r; echo
-    [[ $REPLY =~ ^[Yy]$ ]] && install_deps
-    
-    read -p "Install/Update Neovim? [y/N] " -n 1 -r; echo
-    [[ $REPLY =~ ^[Yy]$ ]] && install_neovim
+    if [[ "$FORCE" == "false" ]] && has_required_deps; then
+        echo -e "${GREEN}Core dependencies already installed, skipping dependency install${NC}"
+    else
+        read -p "Install system dependencies? [y/N] " -n 1 -r; echo
+        [[ $REPLY =~ ^[Yy]$ ]] && install_deps
+    fi
+
+    if [[ "$FORCE" == "false" ]] && nvim_meets_requirement; then
+        echo -e "${GREEN}Neovim requirement already satisfied, skipping Neovim install${NC}"
+    else
+        read -p "Install/Update Neovim? [y/N] " -n 1 -r; echo
+        [[ $REPLY =~ ^[Yy]$ ]] && install_neovim
+    fi
     
     backup_config
     install_config
