@@ -26,22 +26,9 @@ return {
       local cwd = vim.uv.cwd()
       local basename = vim.fs.basename(cwd)
 
-      -- Helper: check if gh copilot is available (cached to avoid repeated calls)
-      local _copilot_available = nil
+      -- Helper: check if copilot CLI is available
       local function is_copilot_available()
-        if _copilot_available ~= nil then
-          return _copilot_available
-        end
-        if vim.fn.executable("copilot") == 1 then
-          _copilot_available = true
-        elseif vim.fn.executable("gh") == 1 then
-          -- Only check gh copilot if gh is available
-          vim.fn.system("gh copilot --help 2>/dev/null")
-          _copilot_available = (vim.v.shell_error == 0)
-        else
-          _copilot_available = false
-        end
-        return _copilot_available
+        return vim.fn.executable("copilot") == 1
       end
 
       -- Auto-detect best available AI CLI provider
@@ -93,12 +80,6 @@ return {
 
         -- Auto-add skills when @ is used in prompts
         auto_add_skills = true,
-
-        -- Supported languages for log_item and treesitter operations
-        languages = {
-          "lua", "go", "java", "elixir", "cpp", "ruby",
-          "rust", "python", "zig", "typescript",
-        },
       })
 
       -- ╭──────────────────────────────────────────────────────────╮
@@ -278,10 +259,11 @@ return {
       vim.api.nvim_create_user_command("NNCopilot", function()
         local state = _99.__get_state()
         state.provider_override = _99.Providers.CopilotCLIProvider
-        state.model = "claude-sonnet-4.5"
-        cached_models = { "claude-sonnet-4.5", "gpt-4o" }
+        state.model = "claude-sonnet-4"
+        cached_models = { "claude-sonnet-4", "gpt-4.1", "o4-mini", "gemini-2.5-pro" }
         current_provider_name = "CopilotCLIProvider"
-        print("99: Switched to Copilot CLI")
+        sync_cache()
+        print("99: Switched to Copilot CLI (claude-sonnet-4)")
       end, { desc = "Switch to Copilot CLI provider" })
 
       vim.api.nvim_create_user_command("NNCursor", function()
