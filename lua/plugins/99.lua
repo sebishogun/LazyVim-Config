@@ -93,6 +93,12 @@ return {
 
         -- Auto-add skills when @ is used in prompts
         auto_add_skills = true,
+
+        -- Supported languages for log_item and treesitter operations
+        languages = {
+          "lua", "go", "java", "elixir", "cpp", "ruby",
+          "rust", "python", "zig", "typescript",
+        },
       })
 
       -- ╭──────────────────────────────────────────────────────────╮

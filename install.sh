@@ -210,16 +210,32 @@ setup_ai_providers() {
     echo "  :NNModel     - Change model (with Tab completion)"
     echo "  :NNStatus    - Show current provider status"
     
-    # Warn if no providers installed
-    if ! $HAS_OPENCODE && ! $HAS_CLAUDE && ! $HAS_COPILOT && ! $HAS_GEMINI && ! $HAS_CODEX; then
+    # Offer to install missing providers
+    if ! $HAS_OPENCODE || ! $HAS_CLAUDE || ! $HAS_COPILOT; then
         echo ""
-        echo -e "${YELLOW}Warning: No AI CLI providers installed. 99 plugin won't work without one.${NC}"
-        echo -e "${YELLOW}Install options:${NC}"
-        echo "  OpenCode:  curl -fsSL https://opencode.ai/install | bash"
-        echo "  Claude:    npm install -g @anthropic-ai/claude-code"
-        echo "  Copilot:   gh extension install github/gh-copilot"
-        echo "  Gemini:    npm install -g @google/gemini-cli"
-        echo "  Codex:     npm install -g @openai/codex"
+        read -p "Would you like to install missing AI CLI providers? [Y/n] " -n 1 -r; echo
+        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+            install_ai_providers "$HAS_OPENCODE" "$HAS_CLAUDE" "$HAS_COPILOT"
+        fi
+    fi
+    
+    # Warn if still no providers installed
+    if ! $HAS_OPENCODE && ! $HAS_CLAUDE && ! $HAS_COPILOT && ! $HAS_GEMINI && ! $HAS_CODEX; then
+        # Re-check after potential installation
+        command -v opencode &> /dev/null && HAS_OPENCODE=true
+        command -v claude &> /dev/null && HAS_CLAUDE=true
+        (command -v gh &> /dev/null && gh copilot --help &> /dev/null) && HAS_COPILOT=true
+        
+        if ! $HAS_OPENCODE && ! $HAS_CLAUDE && ! $HAS_COPILOT && ! $HAS_GEMINI && ! $HAS_CODEX; then
+            echo ""
+            echo -e "${YELLOW}Warning: No AI CLI providers installed. 99 plugin won't work without one.${NC}"
+            echo -e "${YELLOW}Install options:${NC}"
+            echo "  OpenCode:  curl -fsSL https://opencode.ai/install | bash"
+            echo "  Claude:    npm install -g @anthropic-ai/claude-code"
+            echo "  Copilot:   gh extension install github/gh-copilot"
+            echo "  Gemini:    npm install -g @google/gemini-cli"
+            echo "  Codex:     npm install -g @openai/codex"
+        fi
     fi
 }
 
@@ -365,11 +381,32 @@ EOF
     fi
 }
 
+# Install treesitter parsers required by 99 plugin
+install_treesitter_parsers() {
+    echo -e "${YELLOW}Installing treesitter parsers for 99 plugin...${NC}"
+    
+    # Parsers needed for 99 plugin language support
+    PARSERS="lua go java rust python zig typescript tsx javascript ruby cpp elixir"
+    
+    # Install each parser
+    nvim --headless -c "TSInstallSync! $PARSERS" -c "qa" 2>/dev/null || {
+        echo -e "${YELLOW}TSInstallSync not available, trying alternative...${NC}"
+        for parser in $PARSERS; do
+            nvim --headless -c "lua pcall(vim.cmd, 'TSInstall $parser')" -c "qa" 2>/dev/null || true
+        done
+    }
+    
+    echo -e "${GREEN}Treesitter parsers installed!${NC}"
+}
+
 # Sync plugins
 sync_plugins() {
     echo -e "${YELLOW}Installing plugins (this may take a minute)...${NC}"
     nvim --headless "+Lazy! sync" +qa 2>/dev/null || nvim --headless -c "lua require('lazy').sync()" -c "qa" 2>/dev/null || true
     echo -e "${GREEN}Plugins installed!${NC}"
+    
+    # Install treesitter parsers after plugins are synced
+    install_treesitter_parsers
 }
 
 # Main
