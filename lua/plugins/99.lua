@@ -267,7 +267,7 @@ return {
             table.insert(matches, p.name)
           end
         end
-        return table.concat(matches, "\n")
+        return matches
       end
 
       -- Switch provider with completion
@@ -379,7 +379,7 @@ return {
             table.insert(matches, model)
           end
         end
-        return table.concat(matches, "\n")
+        return matches
       end
 
       -- Set custom model with dynamic completion from cached models
