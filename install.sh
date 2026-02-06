@@ -200,15 +200,18 @@ setup_ai_providers() {
     fi
     
     # Show available provider switch commands
-    echo -e "${YELLOW}Available provider commands in neovim:${NC}"
+    echo -e "${YELLOW}Available provider commands in neovim (Tab completion supported):${NC}"
+    echo "  :NNProvider <tab>  - Switch provider with completion"
+    echo "  :NNModel <tab>     - Change model with completion"
+    echo "  :NNStatus          - Show current provider status"
+    echo ""
+    echo -e "${YELLOW}Quick switch commands:${NC}"
     $HAS_OPENCODE && echo "  :NNOpenCode  - Anthropic Claude via OpenCode"
     $HAS_OPENCODE && echo "  :NNOpenAI    - OpenAI models via OpenCode"
     $HAS_CLAUDE && echo "  :NNClaude    - Claude Code CLI"
     $HAS_COPILOT && echo "  :NNCopilot   - GitHub Copilot CLI"
     $HAS_GEMINI && echo "  :NNGemini    - Google Gemini CLI"
     $HAS_CODEX && echo "  :NNCodex     - OpenAI Codex CLI"
-    echo "  :NNModel     - Change model (with Tab completion)"
-    echo "  :NNStatus    - Show current provider status"
     
     # Offer to install missing providers
     if ! $HAS_OPENCODE || ! $HAS_CLAUDE || ! $HAS_COPILOT; then
@@ -454,11 +457,22 @@ main() {
     echo "  <leader>rc  = Open Cargo.toml"
     echo ""
     echo "99 AI Agent (supports OpenCode/Claude/Copilot/Gemini/Codex CLI):"
-    echo "  <leader>9f  = Fill in function"
+    echo "  <leader>9f  = Fill in function (AI generates body)"
+    echo "  <leader>9F  = Fill in function with prompt"
     echo "  <leader>9v  = Process visual selection"
-    echo "  :NNOpenCode = Switch to OpenCode provider"
-    echo "  :NNClaude   = Switch to Claude CLI"
-    echo "  :NNCopilot  = Switch to Copilot CLI"
+    echo "  <leader>9V  = Process selection with prompt"
+    echo "  <leader>9s  = Stop all AI requests"
+    echo "  <leader>9l  = View logs"
+    echo ""
+    echo "99 Provider/Model Commands (Tab completion supported):"
+    echo "  :NNProvider <tab>  = Switch provider (opencode/claude/copilot/gemini/codex)"
+    echo "  :NNModel <tab>     = Set model with completion"
+    echo "  :NNStatus          = Show current provider and model"
+    echo "  :NNOpenCode        = Quick switch to OpenCode"
+    echo "  :NNClaude          = Quick switch to Claude CLI"
+    echo "  :NNCopilot         = Quick switch to Copilot CLI"
+    echo "  :NNGemini          = Quick switch to Gemini CLI"
+    echo "  :NNCodex           = Quick switch to Codex CLI"
 }
 
 main "$@"
