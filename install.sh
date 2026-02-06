@@ -386,17 +386,17 @@ install_treesitter_parsers() {
     echo -e "${YELLOW}Installing treesitter parsers for 99 plugin...${NC}"
     
     # Parsers needed for 99 plugin language support
-    PARSERS="lua go java rust python zig typescript tsx javascript ruby cpp elixir"
+    # These are required for the 99 AI plugin to find functions via treesitter
+    PARSERS="rust go zig java elixir cpp ruby"
     
-    # Install each parser
-    nvim --headless -c "TSInstallSync! $PARSERS" -c "qa" 2>/dev/null || {
-        echo -e "${YELLOW}TSInstallSync not available, trying alternative...${NC}"
-        for parser in $PARSERS; do
-            nvim --headless -c "lua pcall(vim.cmd, 'TSInstall $parser')" -c "qa" 2>/dev/null || true
-        done
-    }
+    # Install parsers with TSInstall! (the ! makes it synchronous)
+    # Use sleep to ensure async compilation completes before quitting
+    echo -e "${YELLOW}This may take 1-2 minutes...${NC}"
+    nvim --headless -c "TSInstall! $PARSERS" -c "sleep 45" -c "qa" 2>&1 | grep -E "(Installing|Compiling|Language installed|Installed)" || true
     
-    echo -e "${GREEN}Treesitter parsers installed!${NC}"
+    # Verify installation
+    INSTALLED=$(ls ~/.local/share/nvim/site/parser/*.so 2>/dev/null | wc -l)
+    echo -e "${GREEN}Treesitter parsers installed! ($INSTALLED parsers available)${NC}"
 }
 
 # Sync plugins
