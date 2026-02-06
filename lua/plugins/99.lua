@@ -35,14 +35,14 @@ return {
       -- Priority: OpenCode > Claude Code > Copilot CLI
       local function detect_provider()
         if vim.fn.executable("opencode") == 1 then
-          return _99.Providers.OpenCodeProvider, "anthropic/claude-opus-4-5"
+          return _99.Providers.OpenCodeProvider, "anthropic/claude-opus-4-6"
         elseif vim.fn.executable("claude") == 1 then
-          return _99.Providers.ClaudeCodeProvider, "opus"
+          return _99.Providers.ClaudeCodeProvider, "claude-opus-4-6"
         elseif is_copilot_available() then
-          return _99.Providers.CopilotCLIProvider, "claude-sonnet-4.5"
+          return _99.Providers.CopilotCLIProvider, "claude-opus-4.6"
         end
         -- Fallback to OpenCode (will error if not installed, prompting user to install)
-        return _99.Providers.OpenCodeProvider, "anthropic/claude-opus-4-5"
+        return _99.Providers.OpenCodeProvider, "anthropic/claude-opus-4-6"
       end
 
       local default_provider, default_model = detect_provider()
@@ -160,7 +160,6 @@ return {
         if provider_name == "OpenCodeProvider" then
           cmd = { "opencode", "models" }
         elseif provider_name == "GeminiProvider" then
-          -- Gemini CLI doesn't have model list, use known models
           cached_models = {
             "gemini-3-pro-preview",
             "gemini-3-flash",
@@ -173,7 +172,6 @@ return {
           if callback then callback() end
           return
         elseif provider_name == "ClaudeCodeProvider" then
-          -- Claude CLI doesn't have model list, use known models
           cached_models = {
             "claude-opus-4-6",
             "claude-opus-4-5",
@@ -188,7 +186,6 @@ return {
           if callback then callback() end
           return
         elseif provider_name == "CodexProvider" then
-          -- Codex CLI doesn't have model list, use known models
           cached_models = {
             "gpt-codex-5.3",
             "gpt-codex-5.2",
@@ -202,8 +199,26 @@ return {
           sync_cache()
           if callback then callback() end
           return
+        elseif provider_name == "CopilotCLIProvider" then
+          cached_models = {
+            "claude-opus-4.6",
+            "claude-opus-4.5",
+            "claude-sonnet-4.5",
+            "claude-sonnet-4",
+            "claude-haiku-4.5",
+            "gpt-5.2-codex",
+            "gpt-5.2",
+            "gpt-5.1-codex-max",
+            "gpt-5.1-codex",
+            "gpt-5.1",
+            "gpt-5",
+            "gemini-3-pro-preview",
+          }
+          current_provider_name = provider_name
+          sync_cache()
+          if callback then callback() end
+          return
         else
-          -- Fallback for other providers
           cached_models = {}
           current_provider_name = provider_name
           sync_cache()
@@ -233,7 +248,54 @@ return {
       -- │                 Provider Switching                       │
       -- ╰──────────────────────────────────────────────────────────╯
 
-      -- Quick provider switch commands (commands can't start with numbers)
+      -- Available providers for completion
+      local available_providers = {
+        { name = "opencode", provider = "OpenCodeProvider", model = "anthropic/claude-opus-4-6" },
+        { name = "claude", provider = "ClaudeCodeProvider", model = "claude-opus-4-6" },
+        { name = "copilot", provider = "CopilotCLIProvider", model = "claude-opus-4.6" },
+        { name = "gemini", provider = "GeminiProvider", model = "gemini-3-pro-preview" },
+        { name = "codex", provider = "CodexProvider", model = "gpt-codex-5.3" },
+        { name = "cursor", provider = "CursorAgentProvider", model = "sonnet-4.5" },
+        { name = "kiro", provider = "KiroProvider", model = "claude-sonnet-4.5" },
+      }
+
+      -- Provider completion function
+      function _G.NNProviderComplete(arg_lead, cmd_line, cursor_pos)
+        local matches = {}
+        for _, p in ipairs(available_providers) do
+          if arg_lead == "" or p.name:lower():find(arg_lead:lower(), 1, true) then
+            table.insert(matches, p.name)
+          end
+        end
+        return table.concat(matches, "\n")
+      end
+
+      -- Switch provider with completion
+      vim.api.nvim_create_user_command("NNProvider", function(opts)
+        if opts.args and opts.args ~= "" then
+          local provider_name = opts.args:lower()
+          for _, p in ipairs(available_providers) do
+            if p.name == provider_name then
+              local state = _99.__get_state()
+              state.provider_override = _99.Providers[p.provider]
+              state.model = p.model
+              fetch_models(p.provider, function()
+                print("99: Switched to " .. p.name .. " (" .. p.model .. ") - " .. #cached_models .. " models")
+              end)
+              return
+            end
+          end
+          print("99: Unknown provider: " .. opts.args)
+        else
+          print("99: Available providers: opencode, claude, copilot, gemini, codex, cursor, kiro")
+        end
+      end, {
+        nargs = "?",
+        desc = "Switch AI provider",
+        complete = "customlist,v:lua.NNProviderComplete",
+      })
+
+      -- Quick provider switch commands
       vim.api.nvim_create_user_command("NNOpenCode", function()
         local state = _99.__get_state()
         state.provider_override = _99.Providers.OpenCodeProvider
@@ -265,14 +327,9 @@ return {
         local state = _99.__get_state()
         state.provider_override = _99.Providers.CopilotCLIProvider
         state.model = "claude-opus-4.6"
-        cached_models = {
-          "claude-opus-4.6", "claude-opus-4.5", "claude-sonnet-4.5", "claude-sonnet-4",
-          "gpt-5.2-codex", "gpt-5.2", "gpt-5.1-codex-max", "gpt-5.1",
-          "gemini-3-pro-preview", "o4-mini",
-        }
-        current_provider_name = "CopilotCLIProvider"
-        sync_cache()
-        print("99: Switched to Copilot CLI (claude-opus-4.6)")
+        fetch_models("CopilotCLIProvider", function()
+          print("99: Switched to Copilot CLI (claude-opus-4.6) - " .. #cached_models .. " models available")
+        end)
       end, { desc = "Switch to Copilot CLI provider" })
 
       vim.api.nvim_create_user_command("NNCursor", function()
@@ -281,6 +338,7 @@ return {
         state.model = "sonnet-4.5"
         cached_models = { "sonnet-4.5", "opus-4.5", "gpt-4o" }
         current_provider_name = "CursorAgentProvider"
+        sync_cache()
         print("99: Switched to Cursor Agent")
       end, { desc = "Switch to Cursor Agent provider" })
 
@@ -290,6 +348,7 @@ return {
         state.model = "claude-sonnet-4.5"
         cached_models = { "claude-sonnet-4.5" }
         current_provider_name = "KiroProvider"
+        sync_cache()
         print("99: Switched to Kiro")
       end, { desc = "Switch to Kiro provider" })
 
@@ -311,7 +370,7 @@ return {
         end)
       end, { desc = "Switch to Codex provider" })
 
-      -- Completion function for v:lua access
+      -- Model completion function
       function _G.NNModelComplete(arg_lead, cmd_line, cursor_pos)
         local models = _G._99_cached_models or {}
         local matches = {}
@@ -373,13 +432,6 @@ return {
       end, { desc = "Show 99 plugin status" })
 
       -- Pre-populate model cache for the default provider on startup
-      local provider_name_map = {
-        OpenCodeProvider = "OpenCodeProvider",
-        ClaudeCodeProvider = "ClaudeCodeProvider",
-        CopilotCLIProvider = "CopilotCLIProvider",
-        GeminiProvider = "GeminiProvider",
-        CodexProvider = "CodexProvider",
-      }
       local default_provider_name = default_provider._get_provider_name and default_provider:_get_provider_name() or "OpenCodeProvider"
       fetch_models(default_provider_name)
     end,
