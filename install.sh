@@ -14,12 +14,16 @@ DISTRO="unknown"
 PKG_MGR=""
 GREP_BIN="grep"
 FORCE=false
+DRY_RUN=false
 NEED_PLUGIN_SYNC=false
 
 for arg in "$@"; do
     case "$arg" in
         --force)
             FORCE=true
+            ;;
+        --dry-run)
+            DRY_RUN=true
             ;;
     esac
 done
@@ -89,6 +93,9 @@ nvim_meets_requirement() {
     if ! command -v nvim &> /dev/null; then
         return 1
     fi
+    if ! command -v bc &> /dev/null; then
+        return 1
+    fi
     local ver
     ver=$(nvim --version | head -1 | "$GREP_BIN" -oP '\d+\.\d+')
     [[ -n "$ver" ]] && (( $(echo "$ver >= 0.10" | bc -l) ))
@@ -103,6 +110,102 @@ all_required_parsers_installed() {
         fi
     done
     return 0
+}
+
+has_nerd_font() {
+    command -v fc-list &> /dev/null && fc-list 2>/dev/null | grep -qi "nerd"
+}
+
+print_dry_run_plan() {
+    local cfg_dir="$HOME/.config/nvim"
+    local plugin_dir="$HOME/neovim-configs/99"
+    local managed=false
+    local deps_ok=false
+    local nvim_ok=false
+    local parsers_ok=false
+    local font_ok=false
+
+    is_managed_config && managed=true
+    has_required_deps && deps_ok=true
+    nvim_meets_requirement && nvim_ok=true
+    all_required_parsers_installed && parsers_ok=true
+    has_nerd_font && font_ok=true
+
+    echo -e "${YELLOW}=== Dry Run: No changes will be made ===${NC}"
+    echo -e "${GREEN}Mode:${NC} force=$FORCE dry-run=$DRY_RUN"
+    echo ""
+    echo -e "${YELLOW}System checks${NC}"
+    echo "- Nerd Font: $($font_ok && echo installed || echo missing)"
+    echo "- Core dependencies: $($deps_ok && echo installed || echo missing)"
+    echo "- Neovim >= 0.10: $($nvim_ok && echo installed || echo missing/outdated)"
+    echo "- Managed nvim config: $($managed && echo yes || echo no)"
+    echo "- Required treesitter parsers: $($parsers_ok && echo installed || echo missing)"
+    echo ""
+
+    echo -e "${YELLOW}Planned actions${NC}"
+    if ! $font_ok; then
+        echo "- Would prompt to install JetBrainsMono Nerd Font"
+    else
+        echo "- Nerd Font step: no changes"
+    fi
+
+    if [[ "$FORCE" == "true" || "$deps_ok" == "false" ]]; then
+        echo "- Would prompt to install dependencies via $PKG_MGR"
+    else
+        echo "- Dependency step: no changes"
+    fi
+
+    if [[ "$FORCE" == "true" || "$nvim_ok" == "false" ]]; then
+        echo "- Would prompt to install/update Neovim"
+    else
+        echo "- Neovim step: no changes"
+    fi
+
+    if [[ "$FORCE" == "true" || "$managed" == "false" ]]; then
+        if [[ -d "$cfg_dir" ]]; then
+            echo "- Would back up existing $cfg_dir and reset Neovim cache/state dirs"
+        fi
+        echo "- Would install config into $cfg_dir"
+    else
+        echo "- Config install step: no changes"
+    fi
+
+    if [[ -d "$plugin_dir" ]]; then
+        if [[ "$FORCE" == "true" ]]; then
+            echo "- Would pull latest in $plugin_dir"
+        elif git -C "$plugin_dir" rev-parse --is-inside-work-tree &> /dev/null; then
+            if [[ -n "$(git -C "$plugin_dir" status --porcelain 2>/dev/null)" ]]; then
+                echo "- 99 plugin repo has local changes; would skip pull"
+            else
+                echo "- 99 plugin repo exists; would check remote and pull only if behind"
+            fi
+        else
+            echo "- 99 plugin directory exists but is not git; would leave as-is"
+        fi
+    else
+        echo "- Would clone 99 plugin fork to $plugin_dir"
+    fi
+
+    local has_opencode=false has_claude=false has_copilot=false has_gemini=false has_codex=false
+    command -v opencode &> /dev/null && has_opencode=true
+    command -v claude &> /dev/null && has_claude=true
+    command -v copilot &> /dev/null && has_copilot=true
+    command -v gemini &> /dev/null && has_gemini=true
+    command -v codex &> /dev/null && has_codex=true
+
+    echo "- AI CLIs detected: opencode=$has_opencode claude=$has_claude copilot=$has_copilot gemini=$has_gemini codex=$has_codex"
+    if $has_opencode; then
+        echo "- Would ensure OpenCode neovim agent config is present"
+    fi
+
+    if [[ "$FORCE" == "true" || "$parsers_ok" == "false" || "$managed" == "false" || ! -d "$plugin_dir" ]]; then
+        echo "- Would run Lazy sync and treesitter parser install"
+    else
+        echo "- Plugin sync/parsers step: no changes"
+    fi
+
+    echo ""
+    echo -e "${GREEN}Tip:${NC} Run ./install.sh to apply, or ./install.sh --force to force refresh"
 }
 
 # Check and install Nerd Font (required for icons)
@@ -558,6 +661,11 @@ main() {
     echo ""
     detect_platform
     echo ""
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        print_dry_run_plan
+        return
+    fi
     
     # Check Nerd Font first (required for icons)
     check_nerd_font

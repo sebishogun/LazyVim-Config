@@ -25,6 +25,37 @@ The installer will:
 - Install treesitter parsers for all supported languages
 - Optionally install AI CLI providers (OpenCode, Claude, Copilot, etc.)
 
+## New Machine Bootstrap
+
+Run this on a fresh Linux/macOS machine:
+
+```bash
+mkdir -p ~/neovim-configs
+cd ~/neovim-configs
+git clone https://github.com/sebishogun/LazyVim-Config.git LazyvimCustomConfig
+git clone https://github.com/sebishogun/99.git 99
+cd ~/neovim-configs/LazyvimCustomConfig
+./install.sh --dry-run
+./install.sh
+```
+
+Optional AI CLI installs (if missing):
+
+```bash
+curl -fsSL https://opencode.ai/install | bash
+npm install -g @anthropic-ai/claude-code @google/gemini-cli @openai/codex
+curl -fsSL https://gh.io/copilot-install | bash
+```
+
+Verify in Neovim:
+
+```vim
+:NNStatus
+:lua require("99").doctor()
+:NNProvider <Tab>
+:NNModel <Tab>
+```
+
 ## Key Bindings
 
 **Leader: Space**
