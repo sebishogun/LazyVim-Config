@@ -94,14 +94,26 @@ return {
     end,
   },
 
+  -- Add WGSL treesitter parser for shader syntax highlighting
+  {
+    "nvim-treesitter/nvim-treesitter",
+    opts = function(_, opts)
+      opts.ensure_installed = opts.ensure_installed or {}
+      vim.list_extend(opts.ensure_installed, { "rust", "toml", "wgsl" })
+    end,
+  },
+
   -- crates.nvim for Cargo.toml management
   {
     "saecki/crates.nvim",
-    dependencies = { "hrsh7th/nvim-cmp" },
     event = { "BufRead Cargo.toml" },
     opts = {
-      completion = {
-        cmp = { enabled = true },
+      -- Use the built-in LSP source (nvim-cmp source is deprecated)
+      lsp = {
+        enabled = true,
+        actions = true,
+        completion = true,
+        hover = true,
       },
     },
   },
