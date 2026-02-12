@@ -74,7 +74,7 @@ return {
           type = "server",
           port = "${port}",
           executable = {
-            command = vim.fn.stdpath("data") .. "/mason/bin/codelldb",
+            command = (vim.fn.has("mac") == 1) and "codelldb" or (vim.fn.stdpath("data") .. "/mason/bin/codelldb"),
             args = { "--port", "${port}" },
           },
         },

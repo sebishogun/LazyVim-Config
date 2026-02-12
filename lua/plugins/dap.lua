@@ -15,6 +15,10 @@ return {
       local dap = require("dap")
       local dapui = require("dapui")
 
+      -- macOS: use system binaries from brew; Linux: use Mason paths
+      local is_mac = vim.fn.has("mac") == 1
+      local mason_bin = vim.fn.stdpath("data") .. "/mason/bin/"
+
       -- Enable DAP logging for debugging
       dap.set_log_level("TRACE")
 
@@ -138,7 +142,7 @@ return {
           type = "server",
           port = "${port}",
           executable = {
-            command = vim.fn.stdpath("data") .. "/mason/bin/dlv",
+            command = is_mac and "dlv" or (mason_bin .. "dlv"),
             args = { "dap", "-l", "127.0.0.1:${port}" },
             cwd = cwd,
           },
@@ -220,7 +224,7 @@ return {
           type = "server",
           port = "${port}",
           executable = {
-            command = vim.fn.stdpath("data") .. "/mason/bin/codelldb",
+            command = is_mac and "codelldb" or (mason_bin .. "codelldb"),
             args = { "--port", "${port}" },
             cwd = cwd,
           },
@@ -319,7 +323,7 @@ return {
 
       dap.adapters.python = {
         type = "executable",
-        command = vim.fn.stdpath("data") .. "/mason/packages/debugpy/venv/bin/python",
+        command = is_mac and "python3" or (vim.fn.stdpath("data") .. "/mason/packages/debugpy/venv/bin/python"),
         args = { "-m", "debugpy.adapter" },
       }
 
