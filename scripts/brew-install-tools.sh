@@ -1,6 +1,7 @@
 #!/bin/bash
 # brew-install-tools.sh — Install all LSP servers, formatters, linters, and debug adapters
 # For macOS corporate laptops where Mason can't download through the firewall
+# Zero npm required — everything via brew + pip3
 # Run this once after cloning the LazyVim-Config repo
 
 set -e
@@ -31,15 +32,23 @@ brew install bash-language-server
 # Markdown
 brew install marksman
 
-# Node-based LSP servers (requires: brew install node)
-echo ""
-echo "=== Installing npm-based LSP Servers ==="
-npm install -g typescript-language-server typescript
-npm install -g vscode-langservers-extracted  # html, css, json, eslint
-npm install -g yaml-language-server
-npm install -g dockerfile-language-server-nodejs
-npm install -g sql-language-server
-npm install -g @tailwindcss/language-server
+# TypeScript/JavaScript
+brew install typescript-language-server
+
+# HTML, CSS, JSON, ESLint
+brew install vscode-langservers-extracted
+
+# YAML
+brew install yaml-language-server
+
+# Dockerfile
+brew install dockerfile-language-server
+
+# SQL
+brew install sql-language-server
+
+# Tailwind CSS
+brew install tailwindcss-language-server
 
 echo ""
 echo "=== Installing Formatters & Linters ==="
