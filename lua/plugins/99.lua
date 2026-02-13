@@ -1,16 +1,15 @@
--- 99.lua - ThePrimeagen's AI Agent for Neovim
--- Fork: https://github.com/sebishogun/99
--- Added CopilotCLIProvider support
+-- nn-ai - AI code generation plugin for Neovim (multi-provider)
+-- Repo: https://github.com/sebishogun/nn-ai
 
 return {
   {
-    -- Use local fork with CopilotCLIProvider support
-    dir = "~/neovim-configs/99",
-    -- Alternatively, use the remote fork:
-    -- "sebishogun/99",
+    -- Use local clone
+    dir = "~/neovim-configs/nn-ai",
+    -- Alternatively, use the remote repo directly:
+    -- "sebishogun/nn-ai",
     config = function()
       -- Ensure queries directory is in runtime path for treesitter
-      local plugin_path = vim.fn.expand("~/neovim-configs/99")
+      local plugin_path = vim.fn.expand("~/neovim-configs/nn-ai")
       if not vim.tbl_contains(vim.opt.runtimepath:get(), plugin_path) then
         vim.opt.runtimepath:append(plugin_path)
       end
