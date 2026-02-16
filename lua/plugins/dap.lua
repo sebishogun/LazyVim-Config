@@ -9,7 +9,7 @@ return {
       { "jay-babu/mason-nvim-dap.nvim", dependencies = { "mason-org/mason.nvim" } },
       "leoluz/nvim-dap-go",
       "mxsdev/nvim-dap-vscode-js",
-      { "microsoft/vscode-js-debug", build = "npm install --legacy-peer-deps && npx gulp dapDebugServer && mv dist out" },
+      { "microsoft/vscode-js-debug", build = "npm install --legacy-peer-deps --ignore-scripts && npx gulp dapDebugServer && mv dist out && git checkout -- package-lock.json" },
     },
     config = function()
       local dap = require("dap")
