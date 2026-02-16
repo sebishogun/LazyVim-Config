@@ -398,7 +398,7 @@ install_99_plugin() {
     else
         echo -e "${YELLOW}Cloning 99 plugin fork...${NC}"
         mkdir -p "$HOME/neovim-configs"
-        git clone https://github.com/sebishogun/99.git "$PLUGIN_DIR"
+        git clone https://github.com/sebishogun/nn-ai.git "$PLUGIN_DIR"
         NEED_PLUGIN_SYNC=true
     fi
     
@@ -605,7 +605,7 @@ configure_opencode_agent() {
             echo -e "${GREEN}Added neovim agent to OpenCode config${NC}"
         else
             echo -e "${YELLOW}jq not found - please manually add neovim agent to $OPENCODE_CONFIG${NC}"
-            echo -e "${YELLOW}See: https://github.com/sebishogun/99#opencode-setup${NC}"
+            echo -e "${YELLOW}See: https://github.com/sebishogun/nn-ai#opencode-setup${NC}"
         fi
     else
         # Create new config with neovim agent

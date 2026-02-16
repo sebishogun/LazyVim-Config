@@ -33,7 +33,7 @@ Run this on a fresh Linux/macOS machine:
 mkdir -p ~/neovim-configs
 cd ~/neovim-configs
 git clone https://github.com/sebishogun/LazyVim-Config.git LazyvimCustomConfig
-git clone https://github.com/sebishogun/99.git 99
+git clone https://github.com/sebishogun/nn-ai.git 99
 cd ~/neovim-configs/LazyvimCustomConfig
 ./install.sh --dry-run
 ./install.sh
