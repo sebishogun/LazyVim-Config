@@ -134,12 +134,21 @@ print_dry_run_plan() {
     echo -e "${YELLOW}=== Dry Run: No changes will be made ===${NC}"
     echo -e "${GREEN}Mode:${NC} force=$FORCE dry-run=$DRY_RUN"
     echo ""
+    local rr_ok=false
+    local gdb_ok=false
+    command -v rr &>/dev/null && rr_ok=true
+    command -v gdb &>/dev/null && gdb_ok=true
+
     echo -e "${YELLOW}System checks${NC}"
     echo "- Nerd Font: $($font_ok && echo installed || echo missing)"
     echo "- Core dependencies: $($deps_ok && echo installed || echo missing)"
     echo "- Neovim >= 0.10: $($nvim_ok && echo installed || echo missing/outdated)"
     echo "- Managed nvim config: $($managed && echo yes || echo no)"
     echo "- Required treesitter parsers: $($parsers_ok && echo installed || echo missing)"
+    if [[ "$OS_FAMILY" == "linux" ]]; then
+        echo "- rr debugger: $($rr_ok && echo installed || echo missing)"
+        echo "- gdb: $($gdb_ok && echo installed || echo missing)"
+    fi
     echo ""
 
     echo -e "${YELLOW}Planned actions${NC}"
@@ -192,6 +201,14 @@ print_dry_run_plan() {
     command -v copilot &> /dev/null && has_copilot=true
     command -v gemini &> /dev/null && has_gemini=true
     command -v codex &> /dev/null && has_codex=true
+
+    if [[ "$OS_FAMILY" == "linux" ]]; then
+        if $rr_ok && $gdb_ok; then
+            echo "- rr debugger step: no changes"
+        else
+            echo "- Would prompt to install rr and gdb for time-travel debugging"
+        fi
+    fi
 
     echo "- AI CLIs detected: opencode=$has_opencode claude=$has_claude copilot=$has_copilot gemini=$has_gemini codex=$has_codex"
     if $has_opencode; then
@@ -618,6 +635,48 @@ EOF
     fi
 }
 
+# Install rr record & replay debugger (Linux only)
+install_rr() {
+    if [[ "$OS_FAMILY" != "linux" ]]; then
+        return
+    fi
+
+    echo ""
+    echo -e "${YELLOW}=== rr Record & Replay Debugger ===${NC}"
+
+    local has_rr=false
+    local has_gdb=false
+    command -v rr &>/dev/null && has_rr=true
+    command -v gdb &>/dev/null && has_gdb=true
+
+    if $has_rr && $has_gdb; then
+        echo -e "${GREEN}rr and gdb already installed${NC}"
+        echo -e "${GREEN}  rr:  $(rr --version 2>&1 | head -1)${NC}"
+        echo -e "${GREEN}  gdb: $(gdb --version | head -1)${NC}"
+        return
+    fi
+
+    echo -e "${YELLOW}rr enables time-travel (reverse) debugging for Rust, C, C++, Zig.${NC}"
+    if ! $has_rr; then
+        echo -e "${RED}  rr: not installed${NC}"
+    fi
+    if ! $has_gdb; then
+        echo -e "${RED}  gdb: not installed${NC}"
+    fi
+
+    read -p "Install rr and gdb? [Y/n] " -n 1 -r; echo
+    if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        if [[ -x "$SCRIPT_DIR/scripts/linux-install-rr.sh" ]]; then
+            bash "$SCRIPT_DIR/scripts/linux-install-rr.sh"
+        else
+            echo -e "${RED}scripts/linux-install-rr.sh not found. Install rr manually.${NC}"
+        fi
+    else
+        echo -e "${YELLOW}Skipping rr install. Run scripts/linux-install-rr.sh later to install.${NC}"
+    fi
+}
+
 # Install treesitter parsers required by 99 plugin
 install_treesitter_parsers() {
     echo -e "${YELLOW}Installing treesitter parsers for 99 plugin...${NC}"
@@ -684,7 +743,9 @@ main() {
         read -p "Install/Update Neovim? [y/N] " -n 1 -r; echo
         [[ $REPLY =~ ^[Yy]$ ]] && install_neovim
     fi
-    
+
+    install_rr
+
     backup_config
     install_config
     install_99_plugin
@@ -715,6 +776,18 @@ main() {
     echo "  <leader>re  = Explain error"
     echo "  <leader>rc  = Open Cargo.toml"
     echo ""
+    if [[ "$OS_FAMILY" == "linux" ]] && command -v rr &>/dev/null; then
+        echo "rr Time-Travel Debugging (Linux):"
+        echo "  :RRRecord [binary]  = Record execution with rr"
+        echo "  :RRReplay           = Start replay server"
+        echo "  :RRStop             = Stop replay server"
+        echo "  <leader>dRc         = Reverse continue"
+        echo "  <leader>dRi         = Reverse step into"
+        echo "  <leader>dRo         = Reverse step over"
+        echo "  <leader>dRO         = Reverse step out"
+        echo ""
+    fi
+
     echo "99 AI Agent (supports OpenCode/Claude/Copilot/Gemini/Codex CLI):"
     echo "  <leader>9f  = Fill in function (AI generates body)"
     echo "  <leader>9F  = Fill in function with prompt"
