@@ -4,12 +4,12 @@
 return {
   {
     -- Use local clone
-    dir = "~/neovim-configs/nn-ai",
+    dir = "~/neovim-configs/99",
     -- Alternatively, use the remote repo directly:
     -- "sebishogun/nn-ai",
     config = function()
       -- Ensure queries directory is in runtime path for treesitter
-      local plugin_path = vim.fn.expand("~/neovim-configs/nn-ai")
+      local plugin_path = vim.fn.expand("~/neovim-configs/99")
       if not vim.tbl_contains(vim.opt.runtimepath:get(), plugin_path) then
         vim.opt.runtimepath:append(plugin_path)
       end
