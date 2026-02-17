@@ -17,6 +17,8 @@ return {
       "mfussenegger/nvim-dap",
       "jay-babu/mason-nvim-dap.nvim",
     },
+    -- Load when any RR command is used OR when opening a native-binary filetype
+    cmd = { "RRRecord", "RRReplay", "RRStop" },
     ft = { "rust", "c", "cpp", "zig" },
     config = function()
       local dap = require("dap")
@@ -24,19 +26,10 @@ return {
       --------------------------------------------------------------------------
       -- MASON: ensure cpptools is installed
       --------------------------------------------------------------------------
-      local mason_dap_ok, mason_dap = pcall(require, "mason-nvim-dap")
+      local mason_dap_ok, _ = pcall(require, "mason-nvim-dap")
       if mason_dap_ok then
-        local cfg = mason_dap.get_config and mason_dap.get_config() or {}
-        local installed = cfg.ensure_installed or {}
-        local has_cpptools = false
-        for _, v in ipairs(installed) do
-          if v == "cpptools" then
-            has_cpptools = true
-            break
-          end
-        end
-        if not has_cpptools then
-          -- Trigger Mason install of cpptools on first load
+        local cpptools_dir = vim.fn.stdpath("data") .. "/mason/packages/cpptools"
+        if vim.fn.isdirectory(cpptools_dir) == 0 then
           vim.defer_fn(function()
             vim.cmd("MasonInstall cpptools")
           end, 2000)
@@ -144,11 +137,9 @@ return {
       table.insert(dap.configurations.c, c_rr)
 
       dap.configurations.cpp = dap.configurations.cpp or {}
-      -- Only add if cpp isn't just a reference to c (dap.lua sets cpp = c)
       if dap.configurations.cpp ~= dap.configurations.c then
         table.insert(dap.configurations.cpp, vim.tbl_deep_extend("force", c_rr, {}))
       else
-        -- cpp was set as alias to c, so we need a separate table
         local cpp_configs = vim.deepcopy(dap.configurations.c)
         table.insert(cpp_configs, vim.tbl_deep_extend("force", c_rr, {}))
         dap.configurations.cpp = cpp_configs
@@ -163,11 +154,11 @@ return {
       local replay_job_id = nil
 
       --------------------------------------------------------------------------
-      -- USER COMMANDS
+      -- SMART BINARY DETECTION & COMPLETION
       --------------------------------------------------------------------------
 
-      --- Detect project type and suggest binary path
-      local function detect_binary()
+      --- Detect project type from cwd and return base path for binaries
+      local function detect_binary_dir()
         local cwd = vim.fn.getcwd()
         if vim.fn.filereadable(cwd .. "/Cargo.toml") == 1 then
           return cwd .. "/target/debug/"
@@ -179,6 +170,62 @@ return {
         return cwd .. "/"
       end
 
+      --- Find executable files in a directory (non-recursive)
+      local function find_executables(dir)
+        local results = {}
+        if vim.fn.isdirectory(dir) == 0 then
+          return results
+        end
+        local entries = vim.fn.glob(dir .. "*", false, true)
+        for _, entry in ipairs(entries) do
+          if vim.fn.executable(entry) == 1 and vim.fn.isdirectory(entry) == 0 then
+            -- Skip .d files (Rust dep files) and .so/.dylib
+            if not entry:match("%.d$") and not entry:match("%.so") and not entry:match("%.dylib") then
+              table.insert(results, entry)
+            end
+          end
+        end
+        return results
+      end
+
+      --- Custom completion for :RRRecord — shows executables from detected project dir
+      local function rr_record_complete(arg_lead, cmd_line, cursor_pos)
+        local base = detect_binary_dir()
+        -- If user already typed a partial path, complete from that
+        if arg_lead ~= "" then
+          local dir = vim.fn.fnamemodify(arg_lead, ":h")
+          if dir ~= "." and vim.fn.isdirectory(dir) == 1 then
+            base = dir .. "/"
+          end
+        end
+        local executables = find_executables(base)
+        -- Also add standard file completion for flexibility
+        local file_matches = vim.fn.getcompletion(arg_lead ~= "" and arg_lead or base, "file")
+        -- Merge: executables first, then file matches
+        local seen = {}
+        local results = {}
+        for _, exe in ipairs(executables) do
+          if not seen[exe] then
+            seen[exe] = true
+            table.insert(results, exe)
+          end
+        end
+        for _, f in ipairs(file_matches) do
+          if not seen[f] then
+            seen[f] = true
+            table.insert(results, f)
+          end
+        end
+        return results
+      end
+
+      -- Expose completion globally so nvim can call it
+      _G._rr_record_complete = rr_record_complete
+
+      --------------------------------------------------------------------------
+      -- USER COMMANDS
+      --------------------------------------------------------------------------
+
       -- :RRRecord [binary] [args]
       vim.api.nvim_create_user_command("RRRecord", function(opts)
         local args = opts.fargs
@@ -188,7 +235,7 @@ return {
           binary = args[1]
           extra_args = table.concat(vim.list_slice(args, 2), " ")
         else
-          local hint = detect_binary()
+          local hint = detect_binary_dir()
           binary = vim.fn.input("Binary to record: ", hint, "file")
           if binary == "" then
             vim.notify("RRRecord: no binary specified", vim.log.levels.WARN)
@@ -219,7 +266,7 @@ return {
         })
       end, {
         nargs = "*",
-        complete = "file",
+        complete = "customlist,v:lua._rr_record_complete",
         desc = "Record a binary with rr",
       })
 

@@ -30,8 +30,13 @@ return {
         return vim.fn.executable("copilot") == 1
       end
 
+      -- Helper: check if GitLab Duo CLI is available
+      local function is_duo_available()
+        return vim.fn.executable("duo") == 1
+      end
+
       -- Auto-detect best available AI CLI provider
-      -- Priority: OpenCode > Claude Code > Copilot CLI
+      -- Priority: OpenCode > Claude Code > Copilot CLI > GitLab Duo
       local function detect_provider()
         if vim.fn.executable("opencode") == 1 then
           return _99.Providers.OpenCodeProvider, "anthropic/claude-opus-4-6"
@@ -39,6 +44,8 @@ return {
           return _99.Providers.ClaudeCodeProvider, "claude-opus-4-6"
         elseif is_copilot_available() then
           return _99.Providers.CopilotCLIProvider, "claude-opus-4.6"
+        elseif is_duo_available() then
+          return _99.Providers.GitLabDuoProvider, "gitlab-duo"
         end
         -- Fallback to OpenCode (will error if not installed, prompting user to install)
         return _99.Providers.OpenCodeProvider, "anthropic/claude-opus-4-6"
@@ -217,6 +224,12 @@ return {
           sync_cache()
           if callback then callback() end
           return
+        elseif provider_name == "GitLabDuoProvider" then
+          cached_models = { "gitlab-duo" }
+          current_provider_name = provider_name
+          sync_cache()
+          if callback then callback() end
+          return
         else
           cached_models = {}
           current_provider_name = provider_name
@@ -256,6 +269,7 @@ return {
         { name = "codex", provider = "CodexProvider", model = "gpt-codex-5.3" },
         { name = "cursor", provider = "CursorAgentProvider", model = "sonnet-4.5" },
         { name = "kiro", provider = "KiroProvider", model = "claude-sonnet-4.5" },
+        { name = "gitlab-duo", provider = "GitLabDuoProvider", model = "gitlab-duo" },
       }
 
       -- Provider completion function
@@ -286,7 +300,7 @@ return {
           end
           print("99: Unknown provider: " .. opts.args)
         else
-          print("99: Available providers: opencode, claude, copilot, gemini, codex, cursor, kiro")
+          print("99: Available providers: opencode, claude, copilot, gemini, codex, cursor, kiro, gitlab-duo")
         end
       end, {
         nargs = "?",
@@ -369,6 +383,15 @@ return {
         end)
       end, { desc = "Switch to Codex provider" })
 
+      vim.api.nvim_create_user_command("NNGitLabDuo", function()
+        local state = _99.__get_state()
+        state.provider_override = _99.Providers.GitLabDuoProvider
+        state.model = "gitlab-duo"
+        fetch_models("GitLabDuoProvider", function()
+          print("99: Switched to GitLab Duo - " .. #cached_models .. " models available")
+        end)
+      end, { desc = "Switch to GitLab Duo provider" })
+
       -- Model completion function
       function _G.NNModelComplete(arg_lead, cmd_line, cursor_pos)
         local models = _G._99_cached_models or {}
@@ -428,6 +451,7 @@ return {
         print("  Copilot:  " .. (is_copilot_available() and "✓" or "✗"))
         print("  Gemini:   " .. (vim.fn.executable("gemini") == 1 and "✓" or "✗"))
         print("  Codex:    " .. (vim.fn.executable("codex") == 1 and "✓" or "✗"))
+        print("  Duo:      " .. (is_duo_available() and "✓" or "✗"))
       end, { desc = "Show 99 plugin status" })
 
       -- Pre-populate model cache for the default provider on startup
