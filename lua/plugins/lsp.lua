@@ -33,7 +33,15 @@ return {
   {
     "mason-org/mason.nvim",
     opts = {
-      ensure_installed = { "gopls", "rust-analyzer", "zls", "clangd", "pyright", "lua-language-server", "typescript-language-server", "eslint-lsp", "html-lsp", "css-lsp", "tailwindcss-language-server", "json-lsp", "yaml-language-server", "bash-language-server", "dockerfile-language-server", "marksman", "sqlls", "stylua", "shfmt", "black", "prettier" },
+      -- On macOS, LSPs/formatters are installed via brew (scripts/brew-install-tools.sh)
+      -- so Mason doesn't need to download anything. On Linux, Mason handles installs.
+      ensure_installed = vim.fn.has("mac") == 1 and {} or {
+        "gopls", "rust-analyzer", "zls", "clangd", "pyright",
+        "lua-language-server", "typescript-language-server", "eslint-lsp",
+        "html-lsp", "css-lsp", "tailwindcss-language-server", "json-lsp",
+        "yaml-language-server", "bash-language-server", "dockerfile-language-server",
+        "marksman", "sqlls", "stylua", "shfmt", "black", "prettier",
+      },
     },
   },
 }
