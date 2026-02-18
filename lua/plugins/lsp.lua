@@ -46,9 +46,6 @@ return {
   },
   {
     "mason-org/mason-lspconfig.nvim",
-    opts = {
-      -- Disable automatic installation on macOS — brew handles it
-      automatic_installation = vim.fn.has("mac") == 0,
-    },
+    enabled = vim.fn.has("mac") == 0,
   },
 }
