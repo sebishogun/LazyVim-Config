@@ -22,10 +22,10 @@ return {
       -- Enable DAP logging for debugging
       dap.set_log_level("TRACE")
 
-      -- Mason DAP setup
+      -- Mason DAP setup — on macOS, debug adapters are installed via brew
       require("mason-nvim-dap").setup({
-        ensure_installed = { "delve", "codelldb", "python", "js", "javadbg", "javatest" },
-        automatic_installation = true,
+        ensure_installed = is_mac and {} or { "delve", "codelldb", "python", "js", "javadbg", "javatest" },
+        automatic_installation = not is_mac,
       })
 
       -- DAP UI setup
